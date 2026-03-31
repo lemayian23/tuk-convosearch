@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TUK-ConvoSearch - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .admin-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .admin-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .admin-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .admin-content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        
+        .section h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        
+        .nav-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>🔧 TUK-ConvoSearch Admin Panel</h1>
+            <p>System Status | Document Management</p>
+        </div>
+        
+        <div class="admin-content">
+            <div class="section">
+                <h2>📊 System Statistics</h2>
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="statChunks">-</div>
+                        <div class="stat-label">Document Chunks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="statModel">-</div>
+                        <div class="stat-label">AI Model</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="statStatus">-</div>
+                        <div class="stat-label">System Status</div>
+                    </div>
+                </div>
+                <button class="btn-secondary" onclick="refreshStats()">🔄 Refresh Statistics</button>
+                <div id="statusMessage" class="status"></div>
+            </div>
+            
+            <div class="section">
+                <h2>🔗 Navigation</h2>
+                <a href="index.html" class="nav-link">← Back to Chat Interface</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://localhost:8000/api';
+        
+        async function refreshStats() {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.className = 'status info';
+            statusDiv.textContent = 'Loading statistics...';
+            
+            try {
+                const response = await fetch(`${API_URL}/stats`);
+                const stats = await response.json();
+                
+                document.getElementById('statChunks').textContent = stats.total_chunks || 0;
+                
+                const healthResponse = await fetch(`${API_URL}/health`);
+                const health = await healthResponse.json();
+                document.getElementById('statModel').textContent = health.model || 'tinyllama';
+                document.getElementById('statStatus').textContent = health.status || 'Healthy';
+                
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✓ Statistics loaded successfully';
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+                
+            } catch (error) {
+                document.getElementById('statChunks').textContent = 'Error';
+                document.getElementById('statModel').textContent = 'Error';
+                document.getElementById('statStatus').textContent = 'Offline';
+                
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `❌ Cannot connect to API. Make sure server is running at ${API_URL}`;
+            }
+        }
+        
+        // Load stats when page opens
+        refreshStats();
+        
+        // Refresh every 30 seconds
+        setInterval(refreshStats, 30000);
+    </script>
+</body>
+</html>
