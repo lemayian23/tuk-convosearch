@@ -1,6 +1,7 @@
 """
 FAISS Vector Store Service
-Replaces ChromaDB with FAISS as specified in the proposal
+Implements FAISS-based vector storage as specified in the proposal
+Location: backend/app/services/faiss_vector_store.py
 """
 
 import faiss
@@ -45,7 +46,7 @@ class FAISSVectorStore:
         else:
             print("  Creating new FAISS index (Flat L2)")
             self.index = faiss.IndexFlatL2(self.dimension)
-            self.metadata = []  # List of dicts with chunk text and metadata
+            self.metadata = []
             print("  New index created")
     
     def add_chunks(self, chunks: List[Dict[str, Any]]) -> int:
@@ -71,8 +72,9 @@ class FAISSVectorStore:
         self.index.add(np.array(embeddings).astype('float32'))
         
         # Store metadata
-        for chunk in chunks:
+        for i, chunk in enumerate(chunks):
             self.metadata.append({
+                'id': len(self.metadata),
                 'text': chunk['text'],
                 'metadata': chunk['metadata']
             })
@@ -104,18 +106,25 @@ class FAISSVectorStore:
         # Search FAISS
         distances, indices = self.index.search(
             np.array(query_embedding).astype('float32'), 
-            k
+            min(k, self.index.ntotal)
         )
         
-        # Format results
+        # Format results with proper JSON-serializable types
         results = []
         for i, idx in enumerate(indices[0]):
             if idx != -1 and idx < len(self.metadata):
                 chunk_data = self.metadata[idx]
+                # Convert numpy types to Python native types
+                distance = float(distances[0][i])  # Convert to Python float
                 results.append({
                     'text': chunk_data['text'],
-                    'metadata': chunk_data['metadata'],
-                    'distance': float(distances[0][i])
+                    'metadata': {
+                        'source': chunk_data['metadata'].get('source', 'unknown'),
+                        'file_path': chunk_data['metadata'].get('file_path', ''),
+                        'chunk_index': int(chunk_data['metadata'].get('chunk_index', 0))  # Convert to int
+                    },
+                    'distance': distance,
+                    'relevance_score': float(1 / (1 + distance))  # Convert to Python float
                 })
         
         print(f"  Found {len(results)} relevant chunks")
@@ -126,7 +135,8 @@ class FAISSVectorStore:
         return {
             'total_chunks': self.index.ntotal,
             'dimension': self.dimension,
-            'persist_directory': self.persist_directory
+            'persist_directory': self.persist_directory,
+            'index_type': 'IndexFlatL2'
         }
     
     def clear_all(self):
@@ -141,3 +151,9 @@ class FAISSVectorStore:
         faiss.write_index(self.index, self.index_file)
         with open(self.metadata_file, 'wb') as f:
             pickle.dump(self.metadata, f)
+    
+    def get_chunk_by_id(self, chunk_id: int) -> Dict[str, Any]:
+        """Retrieve a specific chunk by its ID"""
+        if 0 <= chunk_id < len(self.metadata):
+            return self.metadata[chunk_id]
+        return None
