@@ -12,7 +12,7 @@ cache = {}
 cache_ttl = 3600
 
 class RAGService:
-    def __init__(self, model_name: str = "tinyllama"):
+    def __init__(self, model_name: str = "llama3.2:1b"):
         self.model_name = model_name
         self.vector_store = VectorStore()
         
