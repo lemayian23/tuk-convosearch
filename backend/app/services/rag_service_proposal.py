@@ -141,16 +141,16 @@ ANSWER (with source citations):"""
                 "vector_db": "FAISS"
             }
         
-        # Build context from retrieved chunks
+              # Build context from retrieved chunks with JSON-safe types
         context_parts = []
         sources = []
         
-        for chunk in relevant_chunks[:3]:  # Use top 3 chunks for context
+        for chunk in relevant_chunks[:3]:
             source = chunk['metadata'].get('source', 'unknown')
             context_parts.append(f"[Source: {source}]\n{chunk['text'][:600]}")
             sources.append({
-                'source': source,
-                'relevance_score': chunk.get('relevance_score', 0)
+                'source': str(source),  # Ensure string type
+                'relevance_score': float(chunk.get('relevance_score', 0))  # Convert to float
             })
         
         context = "\n\n".join(context_parts)
