@@ -141,16 +141,24 @@ ANSWER (with source citations):"""
                 "vector_db": "FAISS"
             }
         
-              # Build context from retrieved chunks with JSON-safe types
+             # Build context from retrieved chunks with EXACT QUOTES
         context_parts = []
         sources = []
         
         for chunk in relevant_chunks[:3]:
             source = chunk['metadata'].get('source', 'unknown')
-            context_parts.append(f"[Source: {source}]\n{chunk['text'][:600]}")
+            chunk_text = chunk['text']
+            
+            # Extract a relevant quote (first 200-300 characters of the chunk)
+            quote = chunk_text[:300].strip()
+            if len(chunk_text) > 300:
+                quote = quote + "..."
+            
+            context_parts.append(f"[Source: {source}]\n{chunk_text[:600]}")
             sources.append({
-                'source': str(source),  # Ensure string type
-                'relevance_score': float(chunk.get('relevance_score', 0))  # Convert to float
+                'source': str(source),
+                'quote': str(quote),  # ADD THIS - the actual text from document
+                'relevance_score': float(chunk.get('relevance_score', 0))
             })
         
         context = "\n\n".join(context_parts)
