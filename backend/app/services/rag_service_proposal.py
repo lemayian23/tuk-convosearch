@@ -237,6 +237,13 @@ ANSWER (with source citations):"""
             print("✓ Cleared all conversation history")
 
 
+class ChatResponse(BaseModel):
+    answer: str
+    sources: List[Dict[str, Any]] #This will include 'source', 'quote', reevance_score'
+    chunks_found: int
+    response_time: Optional[float] = None
+    vector_db: str = "FAISS"
+    
 # Test the service
 if __name__ == "__main__":
     print("=" * 60)
