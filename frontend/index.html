@@ -257,25 +257,42 @@
             sendButton.disabled = false;
         }
         
-        function addMessage(text, role) {
-            const messagesDiv = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${role}`;
-            
-            // Convert markdown-style formatting
-            let formattedText = text
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\n/g, '<br>');
-            
-            messageDiv.innerHTML = `
-                <div class="message-content">
-                    ${formattedText}
-                </div>
-            `;
-            
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
+        function addMessage(text, role, sources) {
+    const messagesDiv = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}`;
+    
+    // Convert markdown-style formatting
+    let formattedText = text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    
+    // Add sources with quotes if available
+    let sourcesHtml = '';
+    if (sources && sources.length > 0) {
+        sourcesHtml = '<div class="sources" style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666;">';
+        sourcesHtml += '<strong>📚 Sources with exact quotes:</strong><br>';
+        sources.forEach((source, i) => {
+            sourcesHtml += `<div style="margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 6px;">`;
+            sourcesHtml += `<div><strong>📄 ${source.source}</strong></div>`;
+            if (source.quote) {
+                sourcesHtml += `<div style="margin-top: 4px; font-style: italic; color: #555;">"${source.quote}"</div>`;
+            }
+            sourcesHtml += `</div>`;
+        });
+        sourcesHtml += '</div>';
+    }
+    
+    messageDiv.innerHTML = `
+        <div class="message-content">
+            ${formattedText}
+            ${sourcesHtml}
+        </div>
+    `;
+    
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
         
         function showTypingIndicator() {
             const messagesDiv = document.getElementById('chatMessages');
