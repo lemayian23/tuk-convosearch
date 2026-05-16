@@ -8,7 +8,7 @@ import ollama
 import time
 from typing import List, Dict, Any
 from app.services.faiss_vector_store import FAISSVectorStore
-
+from pydantic import BaseModel
 # Cache for repeated questions
 cache = {}
 cache_ttl = 3600
