@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TUK-Convosearch - AI Student Assistant </title>
+    <title>TUK-ConvoSearch - AI Student Assistant</title>
     <style>
-        *{
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI' , Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
         }
-
+        
         /* Main container with sidebar */
         .app-container {
             width: 95%;
@@ -28,7 +28,7 @@
             display: flex;
             gap: 20px;
         }
-
+        
         /* Chat History Sidebar */
         .sidebar {
             width: 280px;
@@ -39,26 +39,26 @@
             flex-direction: column;
             overflow: hidden;
         }
-
+        
         .sidebar-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 20px;
             text-align: center;
         }
-
+        
         .sidebar-header h2 {
             font-size: 18px;
             margin-bottom: 5px;
         }
-
+        
         .sidebar-header p {
             font-size: 12px;
             opacity: 0.9;
         }
-
+        
         .new-chat-btn {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255,255,255,0.2);
             border: 1px solid rgba(255,255,255,0.3);
             color: white;
             padding: 10px;
@@ -72,17 +72,17 @@
             gap: 8px;
             transition: all 0.3s;
         }
-
+        
         .new-chat-btn:hover {
             background: rgba(255,255,255,0.3);
         }
-
-        .conversation-list {
+        
+        .conversations-list {
             flex: 1;
             overflow-y: auto;
             padding: 10px;
         }
-
+        
         .conversation-item {
             padding: 12px;
             margin-bottom: 8px;
@@ -92,33 +92,46 @@
             transition: all 0.2s;
             border: 1px solid transparent;
         }
-
+        
         .conversation-item:hover {
-            background: e8eaff;
-            transform: translate(4px);
+            background: #e8eaff;
+            transform: translateX(4px);
         }
-
+        
         .conversation-item.active {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
-
+        
+        .conversation-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
         .conversation-date {
             font-size: 10px;
             opacity: 0.7;
         }
-
+        
         .delete-conv {
             float: right;
             opacity: 0;
             transition: opacity 0.2s;
             cursor: pointer;
         }
-
+        
         .conversation-item:hover .delete-conv {
             opacity: 0.7;
         }
-
+        
+        .delete-conv:hover {
+            opacity: 1 !important;
+        }
+        
         /* Chat Container */
         .chat-container {
             flex: 1;
@@ -129,29 +142,468 @@
             flex-direction: column;
             overflow: hidden;
         }
-
+        
         .chat-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 20px;
             text-align: center;
         }
-
+        
         .chat-header h1 {
             font-size: 24px;
             margin-bottom: 5px;
         }
-
+        
         .chat-header p {
             font-size: 14px;
             opacity: 0.9;
         }
-
+        
         .chat-messages {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
             background: #f8f9fa;
         }
+        
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user {
+            justify-content: flex-end;
+        }
+        
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+        
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .sources {
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 12px;
+        }
+        
+        .sources strong {
+            color: #667eea;
+        }
+        
+        .source-item {
+            margin-top: 8px;
+            padding: 8px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+        
+        .source-quote {
+            font-style: italic;
+            color: #555;
+            margin-top: 4px;
+        }
+        
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+        
+        .send-button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s;
+        }
+        
+        .send-button:hover {
+            transform: scale(1.02);
+        }
+        
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .typing {
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #999;
+            animation: typing 1.4s infinite;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+            30% { opacity: 1; transform: translateY(-5px); }
+        }
+        
+        /* Scrollbar styling */
+        .conversations-list::-webkit-scrollbar,
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .conversations-list::-webkit-scrollbar-track,
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .conversations-list::-webkit-scrollbar-thumb,
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 10px;
+        }
     </style>
 </head>
+<body>
+    <div class="app-container">
+        <!-- Chat History Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>💬 Chat History</h2>
+                <p>Your previous conversations</p>
+            </div>
+            <div class="new-chat-btn" onclick="createNewChat()">
+                ➕ New Chat
+            </div>
+            <div class="conversations-list" id="conversationsList">
+                <!-- Conversations will appear here -->
+            </div>
+        </div>
+        
+        <!-- Main Chat Container -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <h1>🎓 TUK-ConvoSearch</h1>
+                <p>Your AI Student Assistant | Ask me anything about TU-K!</p>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    <div class="message-content">
+                        👋 Hi! I'm TUK-ConvoSearch, your AI assistant. I can help you find information about:
+                        <ul style="margin-top: 8px; margin-left: 20px;">
+                            <li>📅 Academic calendars and exam dates</li>
+                            <li>💰 Fee payment deadlines</li>
+                            <li>📝 Registration procedures</li>
+                            <li>🏫 Campus facilities and services</li>
+                        </ul>
+                        <br>
+                        What would you like to know?
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Type your question here..." onkeypress="handleKeyPress(event)">
+                <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://localhost:8000/api/chat';
+        
+        // Store all conversations
+        let conversations = [];
+        let currentConversationId = null;
+        
+        // Load conversations from localStorage
+        function loadConversations() {
+            const saved = localStorage.getItem('tuk_conversations');
+            if (saved) {
+                conversations = JSON.parse(saved);
+            }
+            if (conversations.length === 0) {
+                createNewChat();
+            } else {
+                renderConversationsList();
+                // Load the most recent conversation
+                currentConversationId = conversations[0].id;
+                loadConversation(currentConversationId);
+            }
+        }
+        
+        // Save conversations to localStorage
+        function saveConversations() {
+            localStorage.setItem('tuk_conversations', JSON.stringify(conversations));
+        }
+        
+        // Create a new chat
+        function createNewChat() {
+            const newConversation = {
+                id: Date.now().toString(),
+                title: 'New Chat',
+                date: new Date().toISOString(),
+                messages: [
+                    {
+                        role: 'assistant',
+                        content: '👋 Hi! I\'m TUK-ConvoSearch, your AI assistant. I can help you find information about TU-K. What would you like to know?',
+                        sources: null,
+                        timestamp: new Date().toISOString()
+                    }
+                ]
+            };
+            conversations.unshift(newConversation);
+            currentConversationId = newConversation.id;
+            saveConversations();
+            renderConversationsList();
+            loadConversation(currentConversationId);
+        }
+        
+        // Load a conversation into the chat area
+        function loadConversation(conversationId) {
+            const conversation = conversations.find(c => c.id === conversationId);
+            if (!conversation) return;
+            
+            currentConversationId = conversationId;
+            
+            // Update active state in sidebar
+            document.querySelectorAll('.conversation-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.id === conversationId) {
+                    item.classList.add('active');
+                }
+            });
+            
+            // Load messages into chat area
+            const messagesDiv = document.getElementById('chatMessages');
+            messagesDiv.innerHTML = '';
+            
+            conversation.messages.forEach(msg => {
+                addMessageToUI(msg.content, msg.role, msg.sources, false);
+            });
+            
+            // Update conversation title from first user message
+            const firstUserMsg = conversation.messages.find(m => m.role === 'user');
+            if (firstUserMsg && conversation.title === 'New Chat') {
+                conversation.title = firstUserMsg.content.substring(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '');
+                saveConversations();
+                renderConversationsList();
+            }
+        }
+        
+        // Delete a conversation
+        function deleteConversation(conversationId, event) {
+            event.stopPropagation();
+            if (conversations.length === 1) {
+                createNewChat();
+            }
+            conversations = conversations.filter(c => c.id !== conversationId);
+            if (currentConversationId === conversationId) {
+                currentConversationId = conversations[0]?.id || null;
+                if (currentConversationId) {
+                    loadConversation(currentConversationId);
+                } else {
+                    createNewChat();
+                }
+            }
+            saveConversations();
+            renderConversationsList();
+        }
+        
+        // Render the conversations list in sidebar
+        function renderConversationsList() {
+            const listDiv = document.getElementById('conversationsList');
+            listDiv.innerHTML = '';
+            
+            conversations.forEach(conv => {
+                const convDiv = document.createElement('div');
+                convDiv.className = 'conversation-item';
+                if (conv.id === currentConversationId) {
+                    convDiv.classList.add('active');
+                }
+                convDiv.dataset.id = conv.id;
+                convDiv.onclick = () => loadConversation(conv.id);
+                
+                const date = new Date(conv.date);
+                const formattedDate = `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+                
+                convDiv.innerHTML = `
+                    <div class="conversation-title">
+                        ${conv.title}
+                        <span class="delete-conv" onclick="deleteConversation('${conv.id}', event)">🗑️</span>
+                    </div>
+                    <div class="conversation-date">${formattedDate}</div>
+                `;
+                listDiv.appendChild(convDiv);
+            });
+        }
+        
+        // Add message to UI (without saving to conversation)
+        function addMessageToUI(content, role, sources, saveToConversation = true) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            let formattedText = content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+            
+            let sourcesHtml = '';
+            if (sources && sources.length > 0) {
+                sourcesHtml = '<div class="sources"><strong>📚 Sources:</strong><br>';
+                sources.forEach(source => {
+                    sourcesHtml += `<div class="source-item">`;
+                    sourcesHtml += `<strong>📄 ${source.source}</strong>`;
+                    if (source.quote) {
+                        sourcesHtml += `<div class="source-quote">"${source.quote.substring(0, 200)}${source.quote.length > 200 ? '...' : ''}"</div>`;
+                    }
+                    sourcesHtml += `</div>`;
+                });
+                sourcesHtml += '</div>';
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    ${formattedText}
+                    ${sourcesHtml}
+                </div>
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            // Save to conversation if needed
+            if (saveToConversation && currentConversationId) {
+                const conversation = conversations.find(c => c.id === currentConversationId);
+                if (conversation) {
+                    conversation.messages.push({
+                        role: role,
+                        content: content,
+                        sources: sources || null,
+                        timestamp: new Date().toISOString()
+                    });
+                    saveConversations();
+                }
+            }
+        }
+        
+        // Show typing indicator
+        function showTypingIndicator() {
+            const messagesDiv = document.getElementById('chatMessages');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message assistant';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="message-content">
+                    <span class="typing"></span>
+                    <span class="typing" style="animation-delay: 0.2s"></span>
+                    <span class="typing" style="animation-delay: 0.4s"></span>
+                </div>
+            `;
+            messagesDiv.appendChild(typingDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+        
+        // Send message to API
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            input.value = '';
+            
+            // Add user message to UI and save
+            addMessageToUI(message, 'user', null, true);
+            
+            showTypingIndicator();
+            
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = true;
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: currentConversationId
+                    })
+                });
+                
+                const data = await response.json();
+                removeTypingIndicator();
+                addMessageToUI(data.answer, 'assistant', data.sources, true);
+                
+                // Update conversation title if needed
+                const conversation = conversations.find(c => c.id === currentConversationId);
+                if (conversation && conversation.title === 'New Chat') {
+                    conversation.title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
+                    saveConversations();
+                    renderConversationsList();
+                }
+                
+            } catch (error) {
+                removeTypingIndicator();
+                addMessageToUI('Sorry, I encountered an error. Please make sure the backend server is running.', 'assistant', null, true);
+                console.error('Error:', error);
+            }
+            
+            sendButton.disabled = false;
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        // Initialize
+        loadConversations();
+    </script>
+</body>
+</html>
