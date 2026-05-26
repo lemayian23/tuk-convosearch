@@ -642,6 +642,8 @@
             }
             
             sendButton.disabled = false;
+
+            documet.getElementById('popSound').play().catch(e=> console.og('audio play failed'));
         }
         
         function handleKeyPress(event) {
