@@ -405,7 +405,11 @@
             </div>
         </div>
     </div>
-    
+    <div style="padding: 0 24px 16px 24px; display: flex; gap: 8px; flex-wrap: wrap;">
+    <button class="suggestion" onclick="askSuggestion('When do exams start?')">📅 When do exams start?</button>
+    <button class="suggestion" onclick="askSuggestion('What are the project guidelines?')">📝 Project guidelines</button>
+    <button class="suggestion" onclick="askSuggestion('Where is the university located?')">📍 University location</button>
+</div>
     <script>
         const API_URL = 'http://localhost:8000/api/chat';
         
