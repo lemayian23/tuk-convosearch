@@ -28,7 +28,20 @@ class RAGServiceProposal:
         self.model_name = model_name
         self.vector_store = FAISSVectorStore()
         
-        # TU-K keywords
+        # TU-K keywords and filter
+        if "tell me a joke" in question_lower:
+            return {
+                "answer": "Why did the student bring a ladder to the library? Because they heard the books were on a higher level! 😄",
+                "sources": [],
+                "chunks_found": 0
+            }
+
+        if "what can you do" in question_lower or "your capabilities" in question_lower:
+            return {
+                "answer": "I can help you with:\n• Find exam dates and schedules\n• Answer questions about project guidelines\n• Locate campus facilities\n• Explain registration procedures\n• Provide fee information\n• And much more about TU-K!",
+                "sources": [],
+                "chunks_found": 0
+        }
         self.tuk_keywords = [
             'tuk', 'technical university', 'kenya', 'exam', 'registration',
             'fee', 'campus', 'library', 'student', 'course', 'department',
