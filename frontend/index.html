@@ -204,6 +204,28 @@
             color: #1a1a1a;
             border-bottom-left-radius: 4px;
         }
+
+        .thinking {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.thinking span {
+    width: 8px;
+    height: 8px;
+    background: #888;
+    border-radius: 50%;
+    animation: bounce 0.5s ease infinite;
+}
+
+.thinking span:nth-child(2) { animation-delay: 0.1s; }
+.thinking span:nth-child(3) { animation-delay: 0.2s; }
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
         
         /* Sources styling - clean and minimal */
         .sources {
@@ -553,34 +575,34 @@
             }
             
                 if (role === 'assistant') {
-        messageDiv.innerHTML = `
-            <div class="message-content">
-                ${formattedText}
-                <div style="margin-top: 8px;">
-                    <button onclick="copyToClipboard('${content.replace(/'/g, "\\'")}')" style="background: none; border: none; cursor: pointer; color: #888; font-size: 12px;">📋 Copy</button>
-                </div>
-                ${sourcesHtml}
-            </div>
-        `;
-    } else {
-            
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            
-            // Save to conversation
-            if (saveToConversation && currentConversationId) {
-                const conversation = conversations.find(c => c.id === currentConversationId);
-                if (conversation) {
-                    conversation.messages.push({
-                        role: role,
-                        content: content,
-                        sources: sources || null,
-                        timestamp: new Date().toISOString()
-                    });
-                    saveConversations();
-                }
-            }
-        }
+                messageDiv.innerHTML = `
+                    <div class="message-content">
+                        ${formattedText}
+                        <div style="margin-top: 8px;">
+                            <button onclick="copyToClipboard('${content.replace(/'/g, "\\'")}')" style="background: none; border: none; cursor: pointer; color: #888; font-size: 12px;">📋 Copy</button>
+                        </div>
+                        ${sourcesHtml}
+                    </div>
+                `;
+                } else {
+                        
+                        messagesDiv.appendChild(messageDiv);
+                        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                        
+                        // Save to conversation
+                        if (saveToConversation && currentConversationId) {
+                            const conversation = conversations.find(c => c.id === currentConversationId);
+                            if (conversation) {
+                                conversation.messages.push({
+                                    role: role,
+                                    content: content,
+                                    sources: sources || null,
+                                    timestamp: new Date().toISOString()
+                                });
+                                saveConversations();
+                            }
+                        }
+                    }
 
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text);
