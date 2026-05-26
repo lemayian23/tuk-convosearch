@@ -552,12 +552,17 @@
                 sourcesHtml += '</div>';
             }
             
-            messageDiv.innerHTML = `
-                <div class="message-content">
-                    ${formattedText}
-                    ${sourcesHtml}
+                if (role === 'assistant') {
+        messageDiv.innerHTML = `
+            <div class="message-content">
+                ${formattedText}
+                <div style="margin-top: 8px;">
+                    <button onclick="copyToClipboard('${content.replace(/'/g, "\\'")}')" style="background: none; border: none; cursor: pointer; color: #888; font-size: 12px;">📋 Copy</button>
                 </div>
-            `;
+                ${sourcesHtml}
+            </div>
+        `;
+    } else {
             
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
