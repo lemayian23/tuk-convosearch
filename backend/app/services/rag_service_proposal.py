@@ -8,7 +8,7 @@ import ollama
 import time
 from typing import List, Dict, Any
 from app.services.faiss_vector_store import FAISSVectorStore
-from pydantic import BaseModel
+
 # Cache for repeated questions
 cache = {}
 cache_ttl = 3600
@@ -26,27 +26,25 @@ class RAGServiceProposal:
     
     def __init__(self, model_name: str = "llama3.2:1b"):
         self.model_name = model_name
-        self.vector_store = FAISSVectorStore()  # FAISS as specified
+        self.vector_store = FAISSVectorStore()
         
-        # TU-K keywords for topic filtering
+        # TU-K keywords
         self.tuk_keywords = [
             'tuk', 'technical university', 'kenya', 'exam', 'registration',
             'fee', 'campus', 'library', 'student', 'course', 'department',
             'lecture', 'academic', 'calendar', 'deadline', 'semester',
             'project', 'guideline', 'proposal', 'timetable', 'computing',
-            'graduation', 'degree', 'diploma', 'upgrade', 'evaluation',
-            'presentation', 'thesis', 'research', 'btech', 'exam timetable'
+            'graduation', 'degree', 'diploma', 'upgrade', 'evaluation'
         ]
         
-        # System prompt with citation requirement
+        # System prompt
         self.system_prompt = """You are TUK-ConvoSearch, an AI assistant for Technical University of Kenya.
 
-CRITICAL RULES - PROPOSAL REQUIREMENTS:
+CRITICAL RULES:
 1. ONLY answer using information from the context below
 2. If answer not in context say: "I cannot find this information in the available TU-K documents."
 3. ALWAYS cite your sources - mention which document provided the information
 4. Use proper spelling and grammar
-5. Keep answers concise and helpful
 
 CONTEXT (from TU-K documents):
 {context}
@@ -64,7 +62,6 @@ ANSWER (with source citations):"""
         print(f"  FAISS Vector DB: {stats['total_chunks']} chunks, {stats['dimension']}-dim vectors")
     
     def get_conversation_history(self, session_id: str, limit: int = 5) -> str:
-        """Get recent conversation history for a session"""
         if session_id not in conversation_memory:
             return "No previous conversation."
         
@@ -77,7 +74,6 @@ ANSWER (with source citations):"""
         return "\n".join(history_text)
     
     def add_to_history(self, session_id: str, role: str, content: str):
-        """Add a message to conversation history"""
         if session_id not in conversation_memory:
             conversation_memory[session_id] = []
         
@@ -87,38 +83,26 @@ ANSWER (with source citations):"""
             'timestamp': time.time()
         })
         
-        # Keep only last 20 messages per session
         if len(conversation_memory[session_id]) > 20:
             conversation_memory[session_id] = conversation_memory[session_id][-20:]
     
     def answer_question(self, question: str, session_id: str = "default", k: int = 5) -> Dict[str, Any]:
-        """
-        Answer a question using FAISS-based RAG
-        
-        Args:
-            question: User's question
-            session_id: Session identifier for conversation memory
-            k: Number of chunks to retrieve
-            
-        Returns:
-            Dictionary with answer, sources, and metadata
-        """
         print(f"\n🤔 Question: {question}")
         print(f"  Session: {session_id}")
         
-        # Check if question is TU-K related
+        # Check if TU-K related
         question_lower = question.lower()
         is_tuk_related = any(kw in question_lower for kw in self.tuk_keywords)
         
         if not is_tuk_related and len(question_lower) > 5:
             return {
-                "answer": "I'm TUK-ConvoSearch, your AI assistant for Technical University of Kenya. I can only answer questions about TU-K related topics.",
+                "answer": "I'm TUK-ConvoSearch. I can only answer questions about TU-K related topics.",
                 "sources": [],
                 "chunks_found": 0,
                 "vector_db": "FAISS"
             }
         
-        # Check cache for identical questions
+        # Check cache
         cache_key = f"{session_id}_{question}_{self.model_name}"
         if cache_key in cache:
             cache_time, cache_result = cache[cache_key]
@@ -126,22 +110,22 @@ ANSWER (with source citations):"""
                 print(f"  ⚡ Returning cached answer")
                 return cache_result
         
-        # Get conversation history for context
+        # Get history
         history = self.get_conversation_history(session_id, limit=5)
         
-        # Search FAISS vector database
-        print(f"  🔍 Searching FAISS vector database...")
+        # Search FAISS
+        print(f"  🔍 Searching FAISS...")
         relevant_chunks = self.vector_store.search(question, k=k)
         
         if not relevant_chunks:
             return {
-                "answer": "I cannot find this information in the available TU-K documents. Please contact the university directly or add more documents.",
+                "answer": "I cannot find this information in the available TU-K documents.",
                 "sources": [],
                 "chunks_found": 0,
                 "vector_db": "FAISS"
             }
         
-             # Build context from retrieved chunks with EXACT QUOTES
+        # Build context and sources with quotes
         context_parts = []
         sources = []
         
@@ -149,21 +133,21 @@ ANSWER (with source citations):"""
             source = chunk['metadata'].get('source', 'unknown')
             chunk_text = chunk['text']
             
-            # Extract a relevant quote (first 200-300 characters of the chunk)
-            quote = chunk_text[:300].strip()
-            if len(chunk_text) > 300:
+            # Extract quote (first 250 characters)
+            quote = chunk_text[:250].strip()
+            if len(chunk_text) > 250:
                 quote = quote + "..."
             
             context_parts.append(f"[Source: {source}]\n{chunk_text[:600]}")
             sources.append({
                 'source': str(source),
-                'quote': str(quote),  # ADD THIS - the actual text from document
+                'quote': str(quote),
                 'relevance_score': float(chunk.get('relevance_score', 0))
             })
         
         context = "\n\n".join(context_parts)
         
-        # Generate response using LLM
+        # Generate answer
         print(f"  💭 Generating answer with {self.model_name}...")
         start_time = time.time()
         
@@ -179,7 +163,7 @@ ANSWER (with source citations):"""
                 ],
                 options={
                     'num_predict': 300,
-                    'temperature': 0.2,  # Lower temperature = more factual
+                    'temperature': 0.2,
                 }
             )
             
@@ -191,28 +175,26 @@ ANSWER (with source citations):"""
             answer = f"Error generating answer: {e}"
             elapsed = 0
         
-        # Prepare result
         result = {
             "question": question,
             "answer": answer,
             "sources": sources,
             "chunks_found": len(relevant_chunks),
-            "response_time": round(elapsed, 1),
+            "response_time": float(elapsed),
             "vector_db": "FAISS",
             "total_chunks": self.vector_store.get_stats()['total_chunks']
         }
         
-        # Cache the result
+        # Cache result
         cache[cache_key] = (time.time(), result)
         
-        # Store in conversation history
+        # Add to history
         self.add_to_history(session_id, "user", question)
         self.add_to_history(session_id, "assistant", answer)
         
         return result
     
     def get_stats(self) -> Dict[str, Any]:
-        """Get system statistics"""
         return {
             'vector_db': self.vector_store.get_stats(),
             'model': self.model_name,
@@ -221,13 +203,11 @@ ANSWER (with source citations):"""
         }
     
     def clear_cache(self):
-        """Clear the response cache"""
         global cache
         cache = {}
         print("✓ Cache cleared")
     
     def clear_history(self, session_id: str = None):
-        """Clear conversation history for a session or all sessions"""
         global conversation_memory
         if session_id:
             conversation_memory.pop(session_id, None)
@@ -235,37 +215,3 @@ ANSWER (with source citations):"""
         else:
             conversation_memory = {}
             print("✓ Cleared all conversation history")
-
-
-class ChatResponse(BaseModel):
-    answer: str
-    sources: List[Dict[str, Any]] #This will include 'source', 'quote', reevance_score'
-    chunks_found: int
-    response_time: Optional[float] = None
-    vector_db: str = "FAISS"
-    
-# Test the service
-if __name__ == "__main__":
-    print("=" * 60)
-    print("Testing Proposal-Compliant RAG Service")
-    print("=" * 60)
-    
-    rag = RAGServiceProposal()
-    
-    # Test questions
-    test_questions = [
-        "What are the project guidelines?",
-        "Where is the university located?",
-        "What is the exam timetable for BTECH groups?"
-    ]
-    
-    for question in test_questions:
-        result = rag.answer_question(question)
-        print(f"\n--- Question: {question} ---")
-        print(f"Answer: {result['answer'][:200]}...")
-        print(f"Sources: {[s['source'] for s in result['sources']]}")
-        print(f"Vector DB: {result['vector_db']}")
-        print(f"Response time: {result['response_time']}s")
-    
-    print("\n" + "=" * 60)
-    print("Stats:", rag.get_stats())
