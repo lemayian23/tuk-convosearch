@@ -12,163 +12,165 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: #ffffff;
             height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            overflow: hidden;
         }
         
-        /* Main container with sidebar */
+        /* App container - clean, no gradients */
         .app-container {
-            width: 95%;
-            max-width: 1400px;
-            height: 90vh;
             display: flex;
-            gap: 20px;
+            height: 100vh;
+            width: 100%;
+            background: #ffffff;
         }
         
-        /* Chat History Sidebar */
+        /* Chat History Sidebar - clean dark/light mix */
         .sidebar {
             width: 280px;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            background: #f7f7f8;
+            border-right: 1px solid #e5e5e5;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
         
         .sidebar-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
             padding: 20px;
-            text-align: center;
+            border-bottom: 1px solid #e5e5e5;
+            background: #ffffff;
         }
         
         .sidebar-header h2 {
-            font-size: 18px;
-            margin-bottom: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
         }
         
         .sidebar-header p {
             font-size: 12px;
-            opacity: 0.9;
+            color: #6c6c6c;
         }
         
         .new-chat-btn {
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
+            background: #1a1a1a;
+            border: none;
             color: white;
-            padding: 10px;
-            margin: 15px;
-            border-radius: 12px;
+            padding: 10px 16px;
+            margin: 16px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
+            font-weight: 500;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            transition: all 0.3s;
+            transition: background 0.2s;
         }
         
         .new-chat-btn:hover {
-            background: rgba(255,255,255,0.3);
+            background: #333333;
         }
         
         .conversations-list {
             flex: 1;
             overflow-y: auto;
-            padding: 10px;
+            padding: 8px;
         }
         
         .conversation-item {
             padding: 12px;
-            margin-bottom: 8px;
-            background: #f8f9fa;
-            border-radius: 12px;
+            margin-bottom: 4px;
+            background: transparent;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid transparent;
+            transition: background 0.2s;
+            position: relative;
         }
         
         .conversation-item:hover {
-            background: #e8eaff;
-            transform: translateX(4px);
+            background: #e8e8e8;
         }
         
         .conversation-item.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #e8e8e8;
         }
         
         .conversation-title {
             font-size: 14px;
             font-weight: 500;
-            margin-bottom: 5px;
+            color: #1a1a1a;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            padding-right: 24px;
         }
         
         .conversation-date {
-            font-size: 10px;
-            opacity: 0.7;
+            font-size: 11px;
+            color: #8e8e8e;
+            margin-top: 4px;
         }
         
         .delete-conv {
-            float: right;
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
             opacity: 0;
             transition: opacity 0.2s;
             cursor: pointer;
+            color: #8e8e8e;
+            font-size: 12px;
         }
         
         .conversation-item:hover .delete-conv {
-            opacity: 0.7;
+            opacity: 1;
         }
         
         .delete-conv:hover {
-            opacity: 1 !important;
+            color: #e53935;
         }
         
-        /* Chat Container */
+        /* Main Chat Container - clean white */
         .chat-container {
             flex: 1;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            background: #ffffff;
+            position: relative;
         }
         
         .chat-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            text-align: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e5e5;
+            background: #ffffff;
         }
         
         .chat-header h1 {
-            font-size: 24px;
-            margin-bottom: 5px;
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
         }
         
         .chat-header p {
-            font-size: 14px;
-            opacity: 0.9;
+            font-size: 13px;
+            color: #6c6c6c;
         }
         
         .chat-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
-            background: #f8f9fa;
+            padding: 24px;
+            background: #ffffff;
         }
         
         .message {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             display: flex;
             animation: fadeIn 0.3s ease;
         }
@@ -183,104 +185,116 @@
         }
         
         .message-content {
-            max-width: 70%;
+            max-width: 75%;
             padding: 12px 16px;
-            border-radius: 18px;
+            border-radius: 20px;
             word-wrap: break-word;
+            line-height: 1.5;
+            font-size: 14px;
         }
         
         .message.user .message-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #1a1a1a;
             color: white;
             border-bottom-right-radius: 4px;
         }
         
         .message.assistant .message-content {
-            background: white;
-            color: #333;
-            border: 1px solid #e0e0e0;
+            background: #f7f7f8;
+            color: #1a1a1a;
             border-bottom-left-radius: 4px;
         }
         
+        /* Sources styling - clean and minimal */
         .sources {
             margin-top: 12px;
-            padding-top: 8px;
-            border-top: 1px solid #e0e0e0;
+            padding-top: 10px;
+            border-top: 1px solid #e5e5e5;
             font-size: 12px;
         }
         
         .sources strong {
-            color: #667eea;
+            color: #1a1a1a;
+            font-weight: 600;
         }
         
         .source-item {
             margin-top: 8px;
-            padding: 8px;
-            background: #f5f5f5;
+            padding: 8px 10px;
+            background: #f7f7f8;
             border-radius: 8px;
             font-size: 11px;
         }
         
-        .source-quote {
-            font-style: italic;
-            color: #555;
-            margin-top: 4px;
+        .source-item strong {
+            color: #1a1a1a;
         }
         
+        .source-quote {
+            color: #555555;
+            margin-top: 4px;
+            font-style: italic;
+            line-height: 1.4;
+        }
+        
+        /* Input area - clean */
         .chat-input-container {
-            padding: 20px;
-            background: white;
-            border-top: 1px solid #e0e0e0;
+            padding: 16px 24px;
+            background: #ffffff;
+            border-top: 1px solid #e5e5e5;
             display: flex;
-            gap: 10px;
+            gap: 12px;
         }
         
         .chat-input {
             flex: 1;
-            padding: 12px;
-            border: 1px solid #e0e0e0;
-            border-radius: 25px;
+            padding: 12px 16px;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
             font-size: 14px;
             outline: none;
-            transition: border-color 0.3s;
+            transition: border-color 0.2s;
+            font-family: inherit;
         }
         
         .chat-input:focus {
-            border-color: #667eea;
+            border-color: #1a1a1a;
         }
         
         .send-button {
             padding: 12px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #1a1a1a;
             color: white;
             border: none;
-            border-radius: 25px;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 14px;
-            transition: transform 0.2s;
+            font-weight: 500;
+            transition: background 0.2s;
         }
         
         .send-button:hover {
-            transform: scale(1.02);
+            background: #333333;
         }
         
         .send-button:disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
         }
         
+        /* Typing indicator */
         .typing {
             display: inline-block;
-            width: 4px;
-            height: 4px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
-            background: #999;
+            background: #8e8e8e;
             animation: typing 1.4s infinite;
         }
         
         @keyframes typing {
             0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
-            30% { opacity: 1; transform: translateY(-5px); }
+            30% { opacity: 1; transform: translateY(-6px); }
         }
         
         /* Scrollbar styling */
@@ -297,8 +311,21 @@
         
         .conversations-list::-webkit-scrollbar-thumb,
         .chat-messages::-webkit-scrollbar-thumb {
-            background: #ccc;
+            background: #c1c1c1;
             border-radius: 10px;
+        }
+        
+        .conversations-list::-webkit-scrollbar-thumb:hover,
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            color: #8e8e8e;
+            padding: 40px;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -307,12 +334,16 @@
         <!-- Chat History Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h2>💬 Chat History</h2>
+                <h2>Chat History</h2>
                 <p>Your previous conversations</p>
             </div>
-            <div class="new-chat-btn" onclick="createNewChat()">
-                ➕ New Chat
-            </div>
+            <button class="new-chat-btn" onclick="createNewChat()">
+                + New Chat
+            </button>
+
+            <button class="new-chat-btn" onclick="clearCurrentChat()" style="background: #555; margin-top: 0;">
+    🧹 Clear Current Chat
+            </button>
             <div class="conversations-list" id="conversationsList">
                 <!-- Conversations will appear here -->
             </div>
@@ -321,19 +352,20 @@
         <!-- Main Chat Container -->
         <div class="chat-container">
             <div class="chat-header">
-                <h1>🎓 TUK-ConvoSearch</h1>
-                <p>Your AI Student Assistant | Ask me anything about TU-K!</p>
+                <h1>TUK-ConvoSearch</h1>
+                <p>AI Student Assistant | Ask me anything about TU-K</p>
             </div>
             
             <div class="chat-messages" id="chatMessages">
                 <div class="message assistant">
                     <div class="message-content">
-                        👋 Hi! I'm TUK-ConvoSearch, your AI assistant. I can help you find information about:
+                        👋 Hi! I'm TUK-ConvoSearch, your AI assistant.<br><br>
+                        I can help you find information about:
                         <ul style="margin-top: 8px; margin-left: 20px;">
-                            <li>📅 Academic calendars and exam dates</li>
-                            <li>💰 Fee payment deadlines</li>
-                            <li>📝 Registration procedures</li>
-                            <li>🏫 Campus facilities and services</li>
+                            <li>Academic calendars and exam dates</li>
+                            <li>Fee payment deadlines</li>
+                            <li>Registration procedures</li>
+                            <li>Campus facilities and services</li>
                         </ul>
                         <br>
                         What would you like to know?
@@ -342,7 +374,7 @@
             </div>
             
             <div class="chat-input-container">
-                <input type="text" class="chat-input" id="chatInput" placeholder="Type your question here..." onkeypress="handleKeyPress(event)">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Ask me anything about TU-K..." onkeypress="handleKeyPress(event)">
                 <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
             </div>
         </div>
@@ -365,7 +397,6 @@
                 createNewChat();
             } else {
                 renderConversationsList();
-                // Load the most recent conversation
                 currentConversationId = conversations[0].id;
                 loadConversation(currentConversationId);
             }
@@ -385,7 +416,7 @@
                 messages: [
                     {
                         role: 'assistant',
-                        content: '👋 Hi! I\'m TUK-ConvoSearch, your AI assistant. I can help you find information about TU-K. What would you like to know?',
+                        content: '👋 Hi! I\'m TUK-ConvoSearch. What would you like to know about TU-K?',
                         sources: null,
                         timestamp: new Date().toISOString()
                     }
@@ -454,6 +485,11 @@
             const listDiv = document.getElementById('conversationsList');
             listDiv.innerHTML = '';
             
+            if (conversations.length === 0) {
+                listDiv.innerHTML = '<div class="empty-state">No conversations yet</div>';
+                return;
+            }
+            
             conversations.forEach(conv => {
                 const convDiv = document.createElement('div');
                 convDiv.className = 'conversation-item';
@@ -464,20 +500,20 @@
                 convDiv.onclick = () => loadConversation(conv.id);
                 
                 const date = new Date(conv.date);
-                const formattedDate = `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+                const formattedDate = `${date.getMonth()+1}/${date.getDate()} - ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
                 
                 convDiv.innerHTML = `
                     <div class="conversation-title">
-                        ${conv.title}
-                        <span class="delete-conv" onclick="deleteConversation('${conv.id}', event)">🗑️</span>
+                                        ${conv.title}
                     </div>
                     <div class="conversation-date">${formattedDate}</div>
+                    <span class="delete-conv" onclick="deleteConversation('${conv.id}', event)">🗑️</span>
                 `;
                 listDiv.appendChild(convDiv);
             });
         }
         
-        // Add message to UI (without saving to conversation)
+        // Add message to UI
         function addMessageToUI(content, role, sources, saveToConversation = true) {
             const messagesDiv = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
@@ -489,7 +525,7 @@
             
             let sourcesHtml = '';
             if (sources && sources.length > 0) {
-                sourcesHtml = '<div class="sources"><strong>📚 Sources:</strong><br>';
+                sourcesHtml = '<div class="sources"><strong>Sources</strong><br>';
                 sources.forEach(source => {
                     sourcesHtml += `<div class="source-item">`;
                     sourcesHtml += `<strong>📄 ${source.source}</strong>`;
@@ -511,7 +547,7 @@
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
             
-            // Save to conversation if needed
+            // Save to conversation
             if (saveToConversation && currentConversationId) {
                 const conversation = conversations.find(c => c.id === currentConversationId);
                 if (conversation) {
@@ -526,7 +562,7 @@
             }
         }
         
-        // Show typing indicator
+        // Typing indicator
         function showTypingIndicator() {
             const messagesDiv = document.getElementById('chatMessages');
             const typingDiv = document.createElement('div');
@@ -548,7 +584,7 @@
             if (indicator) indicator.remove();
         }
         
-        // Send message to API
+        // Send message
         async function sendMessage() {
             const input = document.getElementById('chatInput');
             const message = input.value.trim();
@@ -556,10 +592,7 @@
             if (!message) return;
             
             input.value = '';
-            
-            // Add user message to UI and save
             addMessageToUI(message, 'user', null, true);
-            
             showTypingIndicator();
             
             const sendButton = document.getElementById('sendButton');
@@ -579,7 +612,7 @@
                 removeTypingIndicator();
                 addMessageToUI(data.answer, 'assistant', data.sources, true);
                 
-                // Update conversation title if needed
+                // Update conversation title
                 const conversation = conversations.find(c => c.id === currentConversationId);
                 if (conversation && conversation.title === 'New Chat') {
                     conversation.title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
