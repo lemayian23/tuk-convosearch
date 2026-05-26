@@ -1,16 +1,20 @@
 """
 TUK-ConvoSearch - Main Application Entry Point
+Proposal-Compliant Version with FAISS Vector Database
+Location: backend/app/main.py
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import chat  # Import chat router
+from app.api.chat_proposal import router as chat_router
 
 # Create FastAPI instance
 app = FastAPI(
     title="TUK-ConvoSearch",
-    description="Retrieval-Augmented Generation AI Assistant for Technical University of Kenya",
-    version="1.0.0"
+    description="Retrieval-Augmented Generation (RAG) AI Assistant for Technical University of Kenya",
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
 # Configure CORS
@@ -22,8 +26,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(chat.router)
+# Include chat router
+app.include_router(chat_router)
 
 # Root endpoint
 @app.get("/")
@@ -31,10 +35,17 @@ async def root():
     return {
         "message": "Welcome to TUK-ConvoSearch API!",
         "status": "running",
-        "version": "1.0.0"
+        "version": "2.0.0",
+        "vector_db": "FAISS",
+        "endpoints": {
+            "chat": "/api/chat",
+            "health": "/api/health",
+            "stats": "/api/stats",
+            "docs": "/docs"
+        }
     }
 
-# Health check
+# Simple health check
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
