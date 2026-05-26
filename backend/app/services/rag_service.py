@@ -34,12 +34,33 @@ Question: {question}
 Answer (using ONLY the context above):"""
         
         # Keywords for TU-K related questions
-        self.tuk_keywords = [
-            'tuk', 'technical university', 'kenya', 'exam', 'registration', 
-            'fee', 'campus', 'library', 'student', 'course', 'department', 
-            'lecture', 'academic', 'calendar', 'deadline', 'application', 
-            'admission', 'semester', 'class', 'hostel', 'facility'
+        self.tuk_keywords =[
+            # University name
+            'tuk', 'technical university', 'kenya', 'tu-k', 'tukenya',
+            
+            # Academic terms
+            'exam', 'examination', 'registration', 'fee', 'fees', 'tuition',
+            'campus', 'library', 'student', 'course', 'department', 
+            'lecture', 'lecturer', 'academic', 'calendar', 'deadline', 
+            'application', 'admission', 'semester', 'class', 'hostel', 
+            'facility', 'graduation', 'graduate', 'degree', 'diploma',
+            
+            # Project related
+            'project', 'guideline', 'guidelines', 'proposal', 'thesis',
+            'dissertation', 'supervisor', 'supervision', 'evaluation',
+            'presentation', 'defense', 'defence', 'research', 'topic',
+            'chapter', 'format', 'submission', 'submit', 'handbook',
+            
+            # Administrative
+            'registrar', 'finance', 'admissions', 'enrollment', 'enrolment',
+            'certificate', 'transcript', 'result', 'results', 'grade',
+            'marks', 'credit', 'unit', 'units', 'coursework',
+            
+            # Student life
+            'election', 'sports', 'club', 'association', 'student council',
+            'accommodation', 'hostel', 'meal', 'cafeteria', 'transport'
         ]
+        
         
         print(f"✓ RAG Service initialized with {model_name}")
     
