@@ -40,6 +40,7 @@ def main():
     print(f"FAISS dimension: {stats['vector_db']['dimension']}")
     print(f"Cache size: {stats['cache_size']}")
     print(f"Active sessions: {stats['active_sessions']}")
+    print(f"Response time: {result.get('response_time', 'N/A')}s")
 
 if __name__ == "__main__":
     main()

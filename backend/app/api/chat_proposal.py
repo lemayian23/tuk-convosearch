@@ -42,11 +42,11 @@ async def chat(request: ChatRequest):
             session_id=request.session_id
         )
         return ChatResponse(
-            answer=result['answer'],
+            answer=str(result['answer']),  # Ensure string
             sources=result['sources'],
-            chunks_found=result['chunks_found'],
-            response_time=result.get('response_time'),
-            vector_db=result.get('vector_db', 'FAISS')
+            chunks_found=int(result['chunks_found']),  # Ensure int
+            response_time=float(result['response_time']) if result.get('response_time') else None,
+            vector_db=str(result.get('vector_db', 'FAISS'))
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
