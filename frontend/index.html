@@ -472,6 +472,12 @@
             renderConversationsList();
             loadConversation(currentConversationId);
         }
+
+        //ask suggestion function
+        function askSuggestion(question) {
+            document.getElementById('chatInput').value = question;
+            sendMessage();
+        }
         
         // Load a conversation into the chat area
         function loadConversation(conversationId) {
