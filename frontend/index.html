@@ -18,7 +18,6 @@
             overflow: hidden;
         }
         
-        /* App container - clean, no gradients */
         .app-container {
             display: flex;
             height: 100vh;
@@ -26,7 +25,6 @@
             background: #ffffff;
         }
         
-        /* Chat History Sidebar - clean dark/light mix */
         .sidebar {
             width: 280px;
             background: #f7f7f8;
@@ -135,7 +133,6 @@
             color: #e53935;
         }
         
-        /* Main Chat Container - clean white */
         .chat-container {
             flex: 1;
             display: flex;
@@ -204,30 +201,7 @@
             color: #1a1a1a;
             border-bottom-left-radius: 4px;
         }
-
-        .thinking {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-}
-
-.thinking span {
-    width: 8px;
-    height: 8px;
-    background: #888;
-    border-radius: 50%;
-    animation: bounce 0.5s ease infinite;
-}
-
-.thinking span:nth-child(2) { animation-delay: 0.1s; }
-.thinking span:nth-child(3) { animation-delay: 0.2s; }
-
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-}
         
-        /* Sources styling - clean and minimal */
         .sources {
             margin-top: 12px;
             padding-top: 10px;
@@ -259,7 +233,6 @@
             line-height: 1.4;
         }
         
-        /* Input area - clean */
         .chat-input-container {
             padding: 16px 24px;
             background: #ffffff;
@@ -304,7 +277,6 @@
             cursor: not-allowed;
         }
         
-        /* Typing indicator */
         .typing {
             display: inline-block;
             width: 6px;
@@ -319,7 +291,70 @@
             30% { opacity: 1; transform: translateY(-6px); }
         }
         
-        /* Scrollbar styling */
+        .suggestions-container {
+            padding: 0 24px 16px 24px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            background: #ffffff;
+        }
+        
+        .suggestion {
+            background: #f0f0f0;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .suggestion:hover {
+            background: #e0e0e0;
+        }
+        
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background: #1a1a1a;
+        }
+        
+        body.dark-mode .sidebar,
+        body.dark-mode .chat-container,
+        body.dark-mode .chat-header,
+        body.dark-mode .chat-input-container,
+        body.dark-mode .suggestions-container {
+            background: #2a2a2a;
+        }
+        
+        body.dark-mode .sidebar {
+            background: #1e1e1e;
+            border-right-color: #333;
+        }
+        
+        body.dark-mode .sidebar-header {
+            background: #1e1e1e;
+        }
+        
+        body.dark-mode .message.assistant .message-content {
+            background: #2a2a2a;
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .chat-input {
+            background: #2a2a2a;
+            color: white;
+            border-color: #444;
+        }
+        
+        body.dark-mode .suggestion {
+            background: #3a3a3a;
+            color: white;
+        }
+        
+        body.dark-mode .suggestion:hover {
+            background: #4a4a4a;
+        }
+        
         .conversations-list::-webkit-scrollbar,
         .chat-messages::-webkit-scrollbar {
             width: 6px;
@@ -337,68 +372,19 @@
             border-radius: 10px;
         }
         
-        .conversations-list::-webkit-scrollbar-thumb:hover,
-        .chat-messages::-webkit-scrollbar-thumb:hover {
-            background: #a1a1a1;
-        }
-        
-        /* Empty state */
         .empty-state {
             text-align: center;
             color: #8e8e8e;
             padding: 40px;
             font-size: 14px;
         }
-
-        .suggestion {
-    background: #f0f0f0;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.suggestion:hover {
-    background: #e0e0e0;
-}
-
-body.dark-mode {
-    background: #1a1a1a;
-}
-
-body.dark-mode .sidebar,
-body.dark-mode .chat-container,
-body.dark-mode .chat-header,
-body.dark-mode .chat-input-container {
-    background: #2a2a2a;
-}
-
-body.dark-mode .sidebar {
-    background: #1e1e1e;
-    border-right-color: #333;
-}
-
-body.dark-mode .message.assistant .message-content {
-    background: #2a2a2a;
-    color: #e0e0e0;
-}
-
-body.dark-mode .chat-input {
-    background: #2a2a2a;
-    color: white;
-    border-color: #444;
-}
     </style>
-
-<audio id="popSound" preload="auto">
-    <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3" type="audio/mpeg">
-</audio>
+    <audio id="popSound" preload="auto">
+        <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3" type="audio/mpeg">
+    </audio>
 </head>
 <body>
     <div class="app-container">
-        <!-- Chat History Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>Chat History</h2>
@@ -407,16 +393,15 @@ body.dark-mode .chat-input {
             <button class="new-chat-btn" onclick="createNewChat()">
                 + New Chat
             </button>
-
             <button class="new-chat-btn" onclick="clearCurrentChat()" style="background: #555; margin-top: 0;">
-    🧹 Clear Current Chat
+                🧹 Clear Current Chat
             </button>
-            <div class="conversations-list" id="conversationsList">
-                <!-- Conversations will appear here -->
-            </div>
+            <button class="new-chat-btn" onclick="toggleDarkMode()" style="background: #555; margin-top: 0;">
+                🌙 Dark Mode
+            </button>
+            <div class="conversations-list" id="conversationsList"></div>
         </div>
         
-        <!-- Main Chat Container -->
         <div class="chat-container">
             <div class="chat-header">
                 <h1>TUK-ConvoSearch</h1>
@@ -440,29 +425,25 @@ body.dark-mode .chat-input {
                 </div>
             </div>
             
+            <div class="suggestions-container">
+                <button class="suggestion" onclick="askSuggestion('When do exams start?')">📅 When do exams start?</button>
+                <button class="suggestion" onclick="askSuggestion('What are the project guidelines?')">📝 Project guidelines</button>
+                <button class="suggestion" onclick="askSuggestion('Where is the university located?')">📍 University location</button>
+            </div>
+            
             <div class="chat-input-container">
                 <input type="text" class="chat-input" id="chatInput" placeholder="Ask me anything about TU-K..." onkeypress="handleKeyPress(event)">
                 <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
             </div>
         </div>
     </div>
-    <div style="padding: 0 24px 16px 24px; display: flex; gap: 8px; flex-wrap: wrap;">
-    <button class="suggestion" onclick="askSuggestion('When do exams start?')">📅 When do exams start?</button>
-    <button class="suggestion" onclick="askSuggestion('What are the project guidelines?')">📝 Project guidelines</button>
-    <button class="suggestion" onclick="askSuggestion('Where is the university located?')">📍 University location</button>
-</div>
 
-<button class="new-chat-btn" onclick="toggleDarkMode()" style="background: #555;">
-    🌙 Dark Mode
-</button>
     <script>
         const API_URL = 'http://localhost:8000/api/chat';
         
-        // Store all conversations
         let conversations = [];
         let currentConversationId = null;
         
-        // Load conversations from localStorage
         function loadConversations() {
             const saved = localStorage.getItem('tuk_conversations');
             if (saved) {
@@ -477,19 +458,16 @@ body.dark-mode .chat-input {
             }
         }
         
-        // Save conversations to localStorage
         function saveConversations() {
             localStorage.setItem('tuk_conversations', JSON.stringify(conversations));
         }
-
-        //js function
-        function toggleDarkMode() {
-    document.body.classList.toggle('dark-mode');
-    const btn = event.target;
-    btn.textContent = document.body.classList.contains('dark-mode') ? '☀️ Light Mode' : '🌙 Dark Mode';
-}
         
-        // Create a new chat
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const btn = event.target;
+            btn.textContent = document.body.classList.contains('dark-mode') ? '☀️ Light Mode' : '🌙 Dark Mode';
+        }
+        
         function createNewChat() {
             const newConversation = {
                 id: Date.now().toString(),
@@ -510,21 +488,18 @@ body.dark-mode .chat-input {
             renderConversationsList();
             loadConversation(currentConversationId);
         }
-
-        //ask suggestion function
+        
         function askSuggestion(question) {
             document.getElementById('chatInput').value = question;
             sendMessage();
         }
         
-        // Load a conversation into the chat area
         function loadConversation(conversationId) {
             const conversation = conversations.find(c => c.id === conversationId);
             if (!conversation) return;
             
             currentConversationId = conversationId;
             
-            // Update active state in sidebar
             document.querySelectorAll('.conversation-item').forEach(item => {
                 item.classList.remove('active');
                 if (item.dataset.id === conversationId) {
@@ -532,7 +507,6 @@ body.dark-mode .chat-input {
                 }
             });
             
-            // Load messages into chat area
             const messagesDiv = document.getElementById('chatMessages');
             messagesDiv.innerHTML = '';
             
@@ -540,7 +514,6 @@ body.dark-mode .chat-input {
                 addMessageToUI(msg.content, msg.role, msg.sources, false);
             });
             
-            // Update conversation title from first user message
             const firstUserMsg = conversation.messages.find(m => m.role === 'user');
             if (firstUserMsg && conversation.title === 'New Chat') {
                 conversation.title = firstUserMsg.content.substring(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '');
@@ -549,7 +522,6 @@ body.dark-mode .chat-input {
             }
         }
         
-        // Delete a conversation
         function deleteConversation(conversationId, event) {
             event.stopPropagation();
             if (conversations.length === 1) {
@@ -568,7 +540,6 @@ body.dark-mode .chat-input {
             renderConversationsList();
         }
         
-        // Render the conversations list in sidebar
         function renderConversationsList() {
             const listDiv = document.getElementById('conversationsList');
             listDiv.innerHTML = '';
@@ -591,28 +562,30 @@ body.dark-mode .chat-input {
                 const formattedDate = `${date.getMonth()+1}/${date.getDate()} - ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
                 
                 convDiv.innerHTML = `
-                    <div class="conversation-title">
-                                        ${conv.title}
-                    </div>
+                    <div class="conversation-title">${conv.title}</div>
                     <div class="conversation-date">${formattedDate}</div>
                     <span class="delete-conv" onclick="deleteConversation('${conv.id}', event)">🗑️</span>
                 `;
                 listDiv.appendChild(convDiv);
             });
         }
-
+        
         function clearCurrentChat() {
             if (currentConversationId) {
                 const conversation = conversations.find(c => c.id === currentConversationId);
                 if (conversation) {
-                    conversation.messages = [conversation.messages[0]]; // Keep only welcome message
+                    conversation.messages = [conversation.messages[0]];
                     saveConversations();
                     loadConversation(currentConversationId);
                 }
             }
         }
         
-        // Add message to UI
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert('✓ Copied to clipboard!');
+        }
+        
         function addMessageToUI(content, role, sources, saveToConversation = true) {
             const messagesDiv = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
@@ -636,42 +609,42 @@ body.dark-mode .chat-input {
                 sourcesHtml += '</div>';
             }
             
-                if (role === 'assistant') {
+            if (role === 'assistant') {
+                const escapedContent = content.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                 messageDiv.innerHTML = `
                     <div class="message-content">
                         ${formattedText}
                         <div style="margin-top: 8px;">
-                            <button onclick="copyToClipboard('${content.replace(/'/g, "\\'")}')" style="background: none; border: none; cursor: pointer; color: #888; font-size: 12px;">📋 Copy</button>
+                            <button onclick="copyToClipboard('${escapedContent}')" style="background: none; border: none; cursor: pointer; color: #888; font-size: 12px;">📋 Copy</button>
                         </div>
                         ${sourcesHtml}
                     </div>
                 `;
-                } else {
-                        
-                        messagesDiv.appendChild(messageDiv);
-                        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                        
-                        // Save to conversation
-                        if (saveToConversation && currentConversationId) {
-                            const conversation = conversations.find(c => c.id === currentConversationId);
-                            if (conversation) {
-                                conversation.messages.push({
-                                    role: role,
-                                    content: content,
-                                    sources: sources || null,
-                                    timestamp: new Date().toISOString()
-                                });
-                                saveConversations();
-                            }
-                        }
-                    }
-
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text);
-            alert('✓ Copied to clipboard!');
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="message-content">
+                        ${formattedText}
+                    </div>
+                `;
+            }
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            if (saveToConversation && currentConversationId) {
+                const conversation = conversations.find(c => c.id === currentConversationId);
+                if (conversation) {
+                    conversation.messages.push({
+                        role: role,
+                        content: content,
+                        sources: sources || null,
+                        timestamp: new Date().toISOString()
+                    });
+                    saveConversations();
+                }
+            }
         }
         
-        // Typing indicator
         function showTypingIndicator() {
             const messagesDiv = document.getElementById('chatMessages');
             const typingDiv = document.createElement('div');
@@ -693,7 +666,6 @@ body.dark-mode .chat-input {
             if (indicator) indicator.remove();
         }
         
-        // Send message
         async function sendMessage() {
             const input = document.getElementById('chatInput');
             const message = input.value.trim();
@@ -721,7 +693,10 @@ body.dark-mode .chat-input {
                 removeTypingIndicator();
                 addMessageToUI(data.answer, 'assistant', data.sources, true);
                 
-                // Update conversation title
+                // Play sound
+                const popSound = document.getElementById('popSound');
+                popSound.play().catch(e => console.log('Audio play failed'));
+                
                 const conversation = conversations.find(c => c.id === currentConversationId);
                 if (conversation && conversation.title === 'New Chat') {
                     conversation.title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
@@ -736,8 +711,6 @@ body.dark-mode .chat-input {
             }
             
             sendButton.disabled = false;
-
-            documet.getElementById('popSound').play().catch(e=> console.og('audio play failed'));
         }
         
         function handleKeyPress(event) {
@@ -746,7 +719,6 @@ body.dark-mode .chat-input {
             }
         }
         
-        // Initialize
         loadConversations();
     </script>
 </body>
