@@ -512,6 +512,17 @@
                 listDiv.appendChild(convDiv);
             });
         }
+
+        function clearCurrentChat() {
+            if (currentConversationId) {
+                const conversation = conversations.find(c => c.id === currentConversationId);
+                if (conversation) {
+                    conversation.messages = [conversation.messages[0]]; // Keep only welcome message
+                    saveConversations();
+                    loadConversation(currentConversationId);
+                }
+            }
+        }
         
         // Add message to UI
         function addMessageToUI(content, role, sources, saveToConversation = true) {
