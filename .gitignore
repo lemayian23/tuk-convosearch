@@ -1,0 +1,54 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Database files
+chroma_db/
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Backups
+*.bak
+*.backup
+
+# Document files (keep sample but ignore actual documents if sensitive)
+docs/*.pdf
+docs/*.docx
+!docs/sample.txt
+!docs/university_info.txt
+
+# Frontend node modules (if you add later)
+frontend/node_modules/
+frontend/.next/
+
+# Temporary files
+*.tmp
+temp/
