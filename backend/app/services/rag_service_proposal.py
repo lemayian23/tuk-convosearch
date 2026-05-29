@@ -229,44 +229,45 @@ ANSWER (with source citations):"""
             conversation_memory = {}
             print("✓ Cleared all conversation history")
 
-asynch def stream_answer(self, question: str, session_id:str = "default", k: int = 5):
-    """Stream answer word by word"""
+    # Function that enables streaming
+    asynch def stream_answer(self, question: str, session_id:str = "default", k: int = 5):
+        """Stream answer word by word"""
 
-    # Search for relevant chunks (same as before)
-    relevant_chunks = self.vector_store.search(question, k=k)
+        # Search for relevant chunks (same as before)
+        relevant_chunks = self.vector_store.search(question, k=k)
 
-    if not relevant_chunks:
-        yield "I cannot find this information in the available TU-K documents. "
-        return
+        if not relevant_chunks:
+            yield "I cannot find this information in the available TU-K documents. "
+            return
 
-    # Build context
-    context_parts = []
-    sources = []
-    for chunks in relevant_chunks[:3]:
-        source = chunk['metadata'].get('source', 'unkown')
-        context_parts.append(chunk['text'][:600])
-        sources.append({'source': source})
+        # Build context
+        context_parts = []
+        sources = []
+        for chunks in relevant_chunks[:3]:
+            source = chunk['metadata'].get('source', 'unkown')
+            context_parts.append(chunk['text'][:600])
+            sources.append({'source': source})
 
-    context = "\n\n".join(context_parts)
+        context = "\n\n".join(context_parts)
 
-    # Stream from Ollama
-    try:
-        stream = ollama.chat(
-            model = self.model_name,
-            messages=[
-                {'role': 'user'. 'content': self.system_prompt.format(
-                    context=context,
-                    history="",
-                    question=question
-                )}
-            ],
-            stream=True # This enables streaming!
-        )
+        # Stream from Ollama
+        try:
+            stream = ollama.chat(
+                model = self.model_name,
+                messages=[
+                    {'role': 'user'. 'content': self.system_prompt.format(
+                        context=context,
+                        history="",
+                        question=question
+                    )}
+                ],
+                stream=True # This enables streaming!
+            )
 
-        for chunk in stream:
-            if 'message' in chunk and 'content' in chunk['message']:
+            for chunk in stream:
                 if 'message' in chunk and 'content' in chunk['message']:
-                    yield chunk['message']['content']
+                    if 'message' in chunk and 'content' in chunk['message']:
+                        yield chunk['message']['content']
 
-    except Exception as e:
-        yield f"Error: {e}"   
+        except Exception as e:
+            yield f"Error: {e}"   
