@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Optional
 from app.services.rag_service_proposal import RAGServiceProposal
 
 # Create router - THIS MUST BE NAMED 'router'
-router = APIRouter(prefix"/api", ['chat'])
+router = APIRouter(prefix="/api", tags=["chat"])
 
 # Initialize RAG service once
 rag_service = RAGServiceProposal()
@@ -41,22 +41,22 @@ class StatsResponse(BaseModel):
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Send a message and get a complete (non-streamed) response from TUK-Convosearch"""
+    """Send a message and get a complete (non-streamed) response from TUK-ConvoSearch"""
     try:
         result = rag_service.answer_question(
             question=request.message,
             session_id=request.session_id
         )
-
         return ChatResponse(
             answer=str(result['answer']),
             sources=result['sources'],
             chunks_found=int(result['chunks_found']),
-            resposne_time=float(result['response_time']) if result.get('response_time') else None,
+            response_time=float(result['response_time']) if result.get('response_time') else None,
             vector_db=str(result.get('vector_db', 'FAISS'))
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
@@ -65,13 +65,13 @@ async def chat_stream(request: ChatRequest):
 
     Each event is a JSON object on a single line prefixed with 'data: ',
     one of:
-        {"type": "sources", "sources": [...], "chunks_found"; N}
-        {"type": "token", "content": "..."}
-        {"type": "done", "response_time": float}
+      {"type": "sources", "sources": [...], "chunks_found": N}
+      {"type": "token", "content": "..."}
+      {"type": "done", "response_time": float}
 
-    The frontend (see index.html sendMessageStream) reads this with the Fetch API's ReadableStream reader and appends each as it arrives.
+    The frontend (see index.html sendMessageStream) reads this with the
+    Fetch API's ReadableStream reader and appends each token as it arrives.
     """
-
 
     def event_generator():
         try:
@@ -79,7 +79,7 @@ async def chat_stream(request: ChatRequest):
                 question=request.message,
                 session_id=request.session_id
             ):
-            yield f"data: {json.dumps(event)}\n\n"
+                yield f"data: {json.dumps(event)}\n\n"
         except Exception as e:
             error_event = {"type": "token", "content": f"\n[Error: {e}]"}
             yield f"data: {json.dumps(error_event)}\n\n"
@@ -90,21 +90,21 @@ async def chat_stream(request: ChatRequest):
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no", # disable proxy buffering, if ever deployed behind nginx
+            "X-Accel-Buffering": "no",  # disable proxy buffering, if ever deployed behind nginx
         }
     )
 
 
 @router.get("/health")
 async def health():
-    """Check if the servce is healthy"""
+    """Check if the service is healthy"""
     stats = rag_service.get_stats()
     return {
         "status": "healthy",
         "model": rag_service.model_name,
         "vector_db": "FAISS",
         "total_chunks": stats['vector_db']['total_chunks']
-    }  
+    }
 
 
 @router.get("/stats", response_model=StatsResponse)
@@ -116,11 +116,12 @@ async def stats():
 @router.post("/chat/clear")
 async def clear_history(session_id: str = None):
     """Clear conversation history"""
-    rag_srevice.clear_history(session_id)
-    return{ "message": "History cleared", "session_id": session_id}
+    rag_service.clear_history(session_id)
+    return {"message": "History cleared", "session_id": session_id}
 
-    
+
 @router.post("/cache/clear")
 async def clear_cache():
-    """Clear response cache()
+    """Clear response cache"""
+    rag_service.clear_cache()
     return {"message": "Cache cleared"}
