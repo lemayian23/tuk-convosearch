@@ -666,21 +666,41 @@
             if (indicator) indicator.remove();
         }
         
-        async function sendMessage() {
+
+        const STREAM_API_URL = 'http://localhost:8000/api/chat/stream';
+
+        async function sendMessageStream() {
             const input = document.getElementById('chatInput');
             const message = input.value.trim();
-            
+
             if (!message) return;
-            
+
             input.value = '';
             addMessageToUI(message, 'user', null, true);
-            showTypingIndicator();
-            
+
             const sendButton = document.getElementById('sendButton');
             sendButton.disabled = true;
-            
+
+            // Create an empty assistant bubble we will fill in as tokens arrive.
+            const messagesDiv = document.getElementById('chatMessages');
+            const assistantDiv = document.createElement('div');
+            assistantDiv.className = 'message assistant';
+            assistantDiv.innerHTML = `
+                <div class="message-content" id="streamingContent">
+                    <span class="typing"></span>
+                    <span class="typing" style="animation-delay: 0.2s"></span>
+                    <span class="typing" style="animation-delay: 0.4s"></span>
+                </div>
+            `;
+            messagesDiv.appendChild(assistantDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            const contentDiv = document.getElementById('streamingContent');
+            let accumulatedText = '';
+            let receivedSources = [];
+
             try {
-                const response = await fetch(API_URL, {
+                const response = await fetch(STREAM_API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -688,29 +708,114 @@
                         session_id: currentConversationId
                     })
                 });
-                
-                const data = await response.json();
-                removeTypingIndicator();
-                addMessageToUI(data.answer, 'assistant', data.sources, true);
-                
-                // Play sound
-                const popSound = document.getElementById('popSound');
-                popSound.play().catch(e => console.log('Audio play failed'));
-                
-                const conversation = conversations.find(c => c.id === currentConversationId);
-                if (conversation && conversation.title === 'New Chat') {
-                    conversation.title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
-                    saveConversations();
-                    renderConversationsList();
+
+                if (!response.ok || !response.body) {
+                    throw new Error('Stream request failed');
                 }
-                
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let firstTokenReceived = false;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+
+                    // SSE events are separated by a blank line ("\n\n")
+                    const events = buffer.split('\n\n');
+                    buffer = events.pop(); // keep any incomplete trailing chunk
+
+                    for (const rawEvent of events) {
+                        const line = rawEvent.trim();
+                        if (!line.startsWith('data:')) continue;
+
+                        const jsonStr = line.slice(5).trim();
+                        if (!jsonStr) continue;
+
+                        let evt;
+                        try {
+                            evt = JSON.parse(jsonStr);
+                        } catch (e) {
+                            continue; // skip malformed event
+                        }
+
+                        if (evt.type === 'sources') {
+                            receivedSources = evt.sources || [];
+                        } else if (evt.type === 'token') {
+                            if (!firstTokenReceived) {
+                                firstTokenReceived = true;
+                                contentDiv.innerHTML = ''; // clear the typing dots
+                            }
+                            accumulatedText += evt.content;
+                            contentDiv.innerHTML = accumulatedText
+                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                .replace(/\n/g, '<br>');
+                            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                        } else if (evt.type === 'done') {
+                            // Append the copy button + sources panel, same as non-streaming path
+                            let sourcesHtml = '';
+                            if (receivedSources && receivedSources.length > 0) {
+                                sourcesHtml = '<div class="sources"><strong>Sources</strong><br>';
+                                receivedSources.forEach(source => {
+                                    sourcesHtml += `<div class="source-item">`;
+                                    sourcesHtml += `<strong>📄 ${source.source}</strong>`;
+                                    if (source.quote) {
+                                        sourcesHtml += `<div class="source-quote">"${source.quote.substring(0, 200)}${source.quote.length > 200 ? '...' : ''}"</div>`;
+                                    }
+                                    sourcesHtml += `</div>`;
+                                });
+                                sourcesHtml += '</div>';
+                            }
+
+                            const escapedContent = accumulatedText.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                            contentDiv.innerHTML = accumulatedText
+                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                .replace(/\n/g, '<br>')
+                                + `<div style="margin-top: 8px;">
+                                    <button onclick="copyToClipboard('${escapedContent}')" style="background: none; border: none; cursor: pointer; color: #888; font-size: 12px;">📋 Copy</button>
+                                </div>${sourcesHtml}`;
+
+                            // Persist to conversation history (localStorage), same shape as non-streaming path
+                            if (currentConversationId) {
+                                const conversation = conversations.find(c => c.id === currentConversationId);
+                                if (conversation) {
+                                    conversation.messages.push({
+                                        role: 'assistant',
+                                        content: accumulatedText,
+                                        sources: receivedSources,
+                                        timestamp: new Date().toISOString()
+                                    });
+                                    if (conversation.title === 'New Chat') {
+                                        conversation.title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
+                                        renderConversationsList();
+                                    }
+                                    saveConversations();
+                                }
+                            }
+
+                            // Play the same notification sound as the non-streaming path
+                            const popSound = document.getElementById('popSound');
+                            if (popSound) popSound.play().catch(e => console.log('Audio play failed'));
+                        }
+                    }
+                }
+
             } catch (error) {
-                removeTypingIndicator();
-                addMessageToUI('Sorry, I encountered an error. Please make sure the backend server is running.', 'assistant', null, true);
-                console.error('Error:', error);
+                contentDiv.innerHTML = 'Sorry, I encountered an error. Please make sure the backend server is running.';
+                console.error('Stream error:', error);
             }
-            
+
             sendButton.disabled = false;
+        }
+
+        // Enter-key handler that uses the streaming version
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessageStream();
+            }
         }
         
         function handleKeyPress(event) {
