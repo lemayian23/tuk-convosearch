@@ -1,5 +1,5 @@
 """
-TUK-Convosearch - Main Application Entry Point
+TUK-ConvoSearch - Main Application Entry Point
 Proposal-Compliant Version with FAISS Vector Database + SQLite metadata layer
 Location: backend/app/main.py
 """
@@ -10,8 +10,8 @@ from app.api.chat_proposal import router as chat_router
 from app.services import database
 
 # Create FastAPI instance
-app = FastApi(
-    title="TUK-Convosearch",
+app = FastAPI(
+    title="TUK-ConvoSearch",
     description="Retrieval-Augmented Generation (RAG) AI Assistant for Technical University of Kenya",
     version="2.1.0",
     docs_url="/docs",
@@ -23,8 +23,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=[*],
-    allow_headers=[*],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include chat router
@@ -33,27 +33,27 @@ app.include_router(chat_router)
 
 @app.on_event("startup")
 async def startup_event():
-    """Ensure the SQLite schema exists before tha app starts serving requests. """
+    """Ensure the SQLite schema exists before the app starts serving requests."""
     database.init_db()
 
 
 # Root endpoint
 @app.get("/")
 async def root():
-    return{ 
-        "message": "Welcome to TUK-Convosearch API!",
+    return {
+        "message": "Welcome to TUK-ConvoSearch API!",
         "status": "running",
         "version": "2.1.0",
-        "vector_db": "SQLite",
-        "endpoints":{
+        "vector_db": "FAISS",
+        "metadata_db": "SQLite",
+        "endpoints": {
             "chat": "/api/chat",
-            "chat_stream": "api/chat/stream",
+            "chat_stream": "/api/chat/stream",
             "health": "/api/health",
             "stats": "/api/stats",
             "docs": "/docs"
         }
     }
-
 
 
 # Simple health check
