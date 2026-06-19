@@ -1,24 +1,27 @@
 """
 TUK-ConvoSearch - Main Application Entry Point
-Proposal-Compliant Version with FAISS Vector Database + SQLite metadata layer
 Location: backend/app/main.py
+Version: 3.0.0 - FAISS + SQLite JWT Auth + Admin Panel
 """
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cor import CORSMiddleware
+ 
 from app.api.chat_proposal import router as chat_router
+from app.api.admin import router as admin_router
 from app.services import database
+from app.services.auth import hash_password
 
-# Create FastAPI instance
 app = FastAPI(
     title="TUK-ConvoSearch",
-    description="Retrieval-Augmented Generation (RAG) AI Assistant for Technical University of Kenya",
-    version="2.1.0",
+    description="RAG AI Assistant for The Technical University of Kenya - with Admin Panel",
+    version="3.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
-# Configure CORS
+# CORS - allow all origins so the vanilla JS student UI and the React
+# admin panel (different ports during dev) can both reach API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,41 +30,57 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include chat router
+# Routers
 app.include_router(chat_router)
+app.include_router(admin_router)
 
 
-@app.on_event("startup")
+@app.on.event("startup")
 async def startup_event():
-    """Ensure the SQLite schema exists before the app starts serving requests."""
+    # Ensure SQLite schema exists
     database.init_db()
 
+    # Seed a default admin accout if no users exist yet
+    # On first boot after adding auth, this create admin@tuk.ac.ke account.
+    # Change the password immediately via admin panel after first login
+    if database.user_count() == 0:
+        database.create_user(
+            full_name="Denis Kirionki",
+            email="admin@tuk.ac.ke",
+            password_hash=hash_password("Admin2026!"),
+            role="admin",
+        )
+        print("Default admin accout created: admin@tuk.ac.ke / Admin2026!")
+        print( "Change this password after first login.")
 
-# Root endpoint
-@app.get("/")
+
+app.get("/")
 async def root():
     return {
-        "message": "Welcome to TUK-ConvoSearch API!",
+        "message": "Welcome TUK-ConvoSearch API!",
         "status": "running",
-        "version": "2.1.0",
+        "version": "3.0.0",
         "vector_db": "FAISS",
-        "metadata_db": "SQLite",
+        "metadata": "SQLite",
+        "auth": "JWT",
         "endpoints": {
             "chat": "/api/chat",
-            "chat_stream": "/api/chat/stream",
+            "chat_stream": "api/chat/stream",
+            "login": "api/auth/login",
+            "admin_documents": "/api/admin/documents",
+            "admin_logs": "/api/admin/logs",
+            "admin_stats": "/api/admin/stats",
             "health": "/api/health",
-            "stats": "/api/stats",
-            "docs": "/docs"
-        }
+            "docs": "/docs",
+        },
     }
 
 
-# Simple health check
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
 
 
-if __name__ == "__main__":
+if __name__ = "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
