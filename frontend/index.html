@@ -433,7 +433,7 @@
             
             <div class="chat-input-container">
                 <input type="text" class="chat-input" id="chatInput" placeholder="Ask me anything about TU-K..." onkeypress="handleKeyPress(event)">
-                <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
+                <button class="send-button" id="sendButton" onclick="sendMessageStream()">Send</button>
             </div>
         </div>
     </div>
@@ -491,7 +491,7 @@
         
         function askSuggestion(question) {
             document.getElementById('chatInput').value = question;
-            sendMessage();
+            sendMessageStream();
         }
         
         function loadConversation(conversationId) {
@@ -818,11 +818,7 @@
             }
         }
         
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        }
+
         
         loadConversations();
     </script>
