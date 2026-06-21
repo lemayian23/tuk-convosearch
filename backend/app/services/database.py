@@ -34,10 +34,19 @@ def get_connection():
     """
     Context manager yielding a sqlite3 connection with foreign keys enabled
     and row factory set so rows behave like dicts.
+
+    WAL (Write-Ahead Logging) mode is enabled so that multiple processes
+    (e.g. the running uvicorn server and a separately-triggered ingestion
+    script) can read and write the database concurrently without raising
+    "database is locked" errors. A busy_timeout is also set so that if two
+    writes genuinely overlap for a moment, SQLite waits and retries instead
+    of failing immediately.
     """
     _ensure_db_dir()
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA busy_timeout = 30000")
     conn.row_factory = sqlite3.Row
     try:
         yield conn
