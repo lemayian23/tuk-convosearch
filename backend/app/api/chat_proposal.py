@@ -5,6 +5,9 @@ Location: backend/app/api/chat_proposal.py
 """
 
 import json
+import asyncio
+import queue
+import threading
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -63,34 +66,61 @@ async def chat_stream(request: ChatRequest):
     """
     Stream the response token-by-token using Server-Sent Events (SSE).
 
-    Each event is a JSON object on a single line prefixed with 'data: ',
-    one of:
-      {"type": "sources", "sources": [...], "chunks_found": N}
-      {"type": "token", "content": "..."}
-      {"type": "done", "response_time": float}
+    IMPORTANT IMPLEMENTATION NOTE:
+    rag_service.stream_answer() is a SYNCHRONOUS generator — internally it
+    calls ollama.chat(..., stream=True), which performs blocking network
+    I/O. If we iterate that generator directly inside an `async def` route,
+    each blocking call freezes FastAPI's single event loop, so NOTHING else
+    can be sent to the client — not even the first byte — until Ollama
+    finishes. From the browser this looks exactly like a hung request with
+    zero response, even though the backend is actually working underneath.
 
-    The frontend (see index.html sendMessageStream) reads this with the
-    Fetch API's ReadableStream reader and appends each token as it arrives.
+    The fix: run the synchronous generator in a background thread, and use
+    a thread-safe queue.Queue to hand events back to the async event loop
+    one at a time. The async side polls the queue without blocking the
+    event loop, so SSE bytes can be flushed to the client immediately as
+    each event becomes available.
     """
 
-    def event_generator():
-        try:
-            for event in rag_service.stream_answer(
-                question=request.message,
-                session_id=request.session_id
-            ):
-                yield f"data: {json.dumps(event)}\n\n"
-        except Exception as e:
-            error_event = {"type": "token", "content": f"\n[Error: {e}]"}
-            yield f"data: {json.dumps(error_event)}\n\n"
-            yield f"data: {json.dumps({'type': 'done', 'response_time': 0.0})}\n\n"
+    async def event_generator():
+        q: "queue.Queue" = queue.Queue()
+        SENTINEL = object()
+
+        def producer():
+            """Runs in a separate thread. Safe to block here — this thread
+            is not the asyncio event loop, so blocking Ollama calls don't
+            freeze the rest of the server."""
+            try:
+                for event in rag_service.stream_answer(
+                    question=request.message,
+                    session_id=request.session_id
+                ):
+                    q.put(event)
+            except Exception as e:
+                q.put({"type": "token", "content": f"\n[Error: {e}]"})
+                q.put({"type": "done", "response_time": 0.0})
+            finally:
+                q.put(SENTINEL)
+
+        thread = threading.Thread(target=producer, daemon=True)
+        thread.start()
+
+        loop = asyncio.get_event_loop()
+        while True:
+            # q.get is blocking, so run it in the default executor to avoid
+            # blocking the event loop while waiting for the next event.
+            item = await loop.run_in_executor(None, q.get)
+            if item is SENTINEL:
+                break
+            yield f"data: {json.dumps(item)}\n\n"
 
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",  # disable proxy buffering, if ever deployed behind nginx
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
         }
     )
 
