@@ -14,9 +14,8 @@ Provides:
 """
 
 import os
-import shutil
-import subprocess
 import sys
+import asyncio
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -28,8 +27,18 @@ from app.services import database
 router = APIRouter(tags=["admin"])
 
 # Path to the docs folder (relative to where uvicorn is run: backend/)
-DOCS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "docs"))
-REBUILD_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "rebuild_faiss.py"))
+DOCS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "docs"))
+BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+# Make rebuild_faiss importable as a module (it lives in backend/, one level
+# above the app/ package) and import its core function directly. Calling
+# this in-process — rather than spawning rebuild_faiss.py as a separate OS
+# subprocess — avoids two Python processes contending for the same SQLite
+# database file at the same time, which previously caused intermittent
+# "database is locked" failures during document upload.
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+from rebuild_faiss import rebuild_index
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 
@@ -110,6 +119,14 @@ async def upload_document(
     """
     Upload a new document to the docs folder, then trigger a full
     FAISS re-index so the new content is immediately searchable.
+
+    The re-index runs rebuild_index() directly in-process (not as a
+    separate subprocess) to avoid two Python processes contending for
+    the same SQLite database file. Because re-indexing is a slow,
+    blocking operation (re-embeds every chunk of every document), it is
+    run in a background thread via run_in_executor so it doesn't freeze
+    the server's event loop while it works — the same fix pattern used
+    for streaming chat responses.
     """
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
@@ -118,7 +135,6 @@ async def upload_document(
             detail=f"Unsupported file type '{ext}'. Allowed: PDF, DOCX, TXT.",
         )
 
-    # Save file to docs directory
     os.makedirs(DOCS_DIR, exist_ok=True)
     dest_path = os.path.join(DOCS_DIR, file.filename)
 
@@ -126,25 +142,18 @@ async def upload_document(
         content = await file.read()
         f.write(content)
 
-    # Trigger rebuild_faiss.py as a subprocess so it runs in the same venv
     try:
-        result = subprocess.run(
-            [sys.executable, REBUILD_SCRIPT],
-            capture_output=True,
-            text=True,
-            cwd=os.path.dirname(REBUILD_SCRIPT),
-            timeout=120,
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: rebuild_index(docs_folder=DOCS_DIR, verbose=True)
         )
-        if result.returncode != 0:
-            raise Exception(result.stderr)
     except Exception as e:
-        # File was saved but indexing failed — report it clearly
         raise HTTPException(
             status_code=500,
             detail=f"File saved but re-indexing failed: {str(e)[:300]}",
         )
 
-    # Return updated document list
     docs = database.list_documents(active_only=True)
     uploaded = next((d for d in docs if d["filename"] == file.filename), None)
 
@@ -158,28 +167,55 @@ async def upload_document(
 @router.delete("/api/admin/documents/{document_id}")
 async def delete_document(document_id: int, admin=Depends(require_admin)):
     """
-    Soft-delete a document from the SQLite documents table (marks it
-    inactive). The physical file is retained. A full re-index is triggered
-    so FAISS no longer returns chunks from the deleted document.
+    Remove a document from the active search index.
+
+    IMPORTANT: rebuild_index() treats every file physically present in
+    DOCS_DIR as the full source of truth and re-ingests all of them on
+    every rebuild. Marking a database row inactive is therefore not
+    sufficient on its own — if the file is left in DOCS_DIR, the very
+    next rebuild (triggered by any future upload or delete) would
+    silently re-ingest it and mark it active again.
+
+    To prevent this, the physical file is moved out of DOCS_DIR into a
+    sibling 'docs_archive' folder (not deleted outright, so nothing is
+    destructively lost) before the re-index runs. The database row is
+    marked inactive for audit history.
     """
+    docs = database.list_documents(active_only=False)
+    target = next((d for d in docs if d["document_id"] == document_id), None)
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
     success = database.deactivate_document(document_id)
     if not success:
         raise HTTPException(status_code=404, detail="Document not found.")
 
-    # Re-index so FAISS reflects the removal
+    # Move the physical file out of DOCS_DIR so rebuild_index() won't
+    # re-ingest it on the next rebuild (whenever that happens).
+    archive_dir = os.path.join(DOCS_DIR, "..", "docs_archive")
+    archive_dir = os.path.abspath(archive_dir)
+    os.makedirs(archive_dir, exist_ok=True)
+
+    src_path = os.path.join(DOCS_DIR, target["filename"])
+    if os.path.exists(src_path):
+        dest_path = os.path.join(archive_dir, target["filename"])
+        # Avoid overwriting if a same-named file was already archived before
+        if os.path.exists(dest_path):
+            base, ext = os.path.splitext(target["filename"])
+            dest_path = os.path.join(archive_dir, f"{base}_{document_id}{ext}")
+        os.rename(src_path, dest_path)
+
     try:
-        subprocess.run(
-            [sys.executable, REBUILD_SCRIPT],
-            capture_output=True,
-            text=True,
-            cwd=os.path.dirname(REBUILD_SCRIPT),
-            timeout=120,
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: rebuild_index(docs_folder=DOCS_DIR, verbose=True)
         )
     except Exception as e:
-        # Non-fatal for the delete operation itself — log and continue
         print(f"  ⚠ Re-index after delete failed: {e}")
 
-    return {"message": f"Document {document_id} deactivated successfully."}
+    return {"message": f"'{target['filename']}' removed and re-indexed successfully."}
 
 
 # ------------------------------------------------------------------ #
