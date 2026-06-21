@@ -2,11 +2,20 @@
 Rebuild FAISS index from all documents in docs folder
 Location: backend/rebuild_faiss.py
 
-Now also syncs document-level metadata into SQLite (documents table)
-so the React admin panel (Phase 3) has something durable to read from.
-FAISS remains the only place chunk-level vectors live; SQLite tracks
-which files were ingested, when, and how many chunks each produced.
+Can be run two ways:
+  1. As a standalone script:  python rebuild_faiss.py
+  2. Imported and called directly from the running server
+     (see app/api/admin.py), which avoids spawning a second OS process
+     that would otherwise contend with the live server for the SQLite
+     database file.
 """
+
+import os
+import sys
+
+# Ensure this works whether run as a script (python rebuild_faiss.py)
+# or imported as a module (from rebuild_faiss import rebuild_index)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.services.document_loader import DocumentLoader
 from app.services.chunking import DocumentChunker
@@ -14,61 +23,70 @@ from app.services.faiss_vector_store import FAISSVectorStore
 from app.services import database
 
 
-def main():
-    print("=" * 60)
-    print("Rebuilding FAISS Index from All Documents")
-    print("=" * 60)
+def rebuild_index(docs_folder: str = None, verbose: bool = True) -> dict:
+    """
+    Core rebuild logic, callable directly from Python (no subprocess needed).
 
-    # Step 0: Make sure the SQLite schema exists
+    Args:
+        docs_folder: path to the folder containing source documents.
+                     Defaults to '../docs' relative to this file, matching
+                     the original script's behaviour.
+        verbose: if True, prints progress exactly as the original CLI script did.
+
+    Returns:
+        dict with summary stats: total_chunks, total_documents, dimension, index_type
+    """
+    def log(msg):
+        if verbose:
+            print(msg)
+
+    if docs_folder is None:
+        docs_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")
+
+    log("=" * 60)
+    log("Rebuilding FAISS Index from All Documents")
+    log("=" * 60)
+
     database.init_db()
 
-    # Step 1: Load documents
-    print("\n📁 Loading documents from docs folder...")
+    log("\n📁 Loading documents from docs folder...")
     loader = DocumentLoader()
     chunker = DocumentChunker()
 
-    documents = loader.load_documents_from_folder("../docs")
-    print(f"Loaded {len(documents)} documents")
+    documents = loader.load_documents_from_folder(docs_folder)
+    log(f"Loaded {len(documents)} documents")
 
     if not documents:
-        print("No documents found!")
-        return
+        log("No documents found!")
+        return {"total_chunks": 0, "total_documents": 0}
 
-    # Step 2: Chunk all documents
-    print("\n✂️ Chunking documents...")
+    log("\n✂️ Chunking documents...")
     all_chunks = []
     chunk_counts_by_file = {}
 
     for doc in documents:
-        if doc['content_length'] > 0:  # Skip empty documents
+        if doc['content_length'] > 0:
             chunks = chunker.chunk_document(doc)
             all_chunks.extend(chunks)
             chunk_counts_by_file[doc['file_name']] = {
                 'count': len(chunks),
                 'file_type': doc['file_type'],
             }
-            print(f"  {doc['file_name']}: {len(chunks)} chunks")
+            log(f"  {doc['file_name']}: {len(chunks)} chunks")
 
-    print(f"\nTotal chunks created: {len(all_chunks)}")
+    log(f"\nTotal chunks created: {len(all_chunks)}")
 
-    # Step 3: Clear existing FAISS index
-    print("\n🗑️ Clearing existing FAISS index...")
+    log("\n🗑️ Clearing existing FAISS index...")
     faiss_store = FAISSVectorStore()
     faiss_store.clear_all()
 
-    # Step 3b: Clear existing documents table so it stays in sync with
-    # the freshly rebuilt FAISS index (this script always does a full rebuild)
     database.clear_all_documents()
 
-    # Step 4: Add chunks to FAISS
-    print("\n💾 Adding chunks to FAISS...")
+    log("\n💾 Adding chunks to FAISS...")
     faiss_store.add_chunks(all_chunks)
 
-    # Step 4b: Record each document's metadata in SQLite
-    print("\n🗄️  Recording document metadata in SQLite...")
+    log("\n🗄️  Recording document metadata in SQLite...")
     for file_name, info in chunk_counts_by_file.items():
-        # Use the filename (without extension) as a human-readable title;
-        # admins can rename this later via the admin panel if needed.
         title = file_name.rsplit('.', 1)[0]
         database.upsert_document(
             filename=file_name,
@@ -76,17 +94,28 @@ def main():
             file_type=info['file_type'],
             chunk_count=info['count'],
         )
-        print(f"  Recorded: {file_name} ({info['count']} chunks)")
+        log(f"  Recorded: {file_name} ({info['count']} chunks)")
 
-    # Step 5: Verify
     stats = faiss_store.get_stats()
-    print("\n" + "=" * 60)
-    print("✅ FAISS Index Rebuilt Successfully!")
-    print("=" * 60)
-    print(f"Total chunks in FAISS: {stats['total_chunks']}")
-    print(f"FAISS dimension: {stats['dimension']}")
-    print(f"Index type: {stats['index_type']}")
-    print(f"Documents recorded in SQLite: {len(database.list_documents())}")
+    log("\n" + "=" * 60)
+    log("✅ FAISS Index Rebuilt Successfully!")
+    log("=" * 60)
+    log(f"Total chunks in FAISS: {stats['total_chunks']}")
+    log(f"FAISS dimension: {stats['dimension']}")
+    log(f"Index type: {stats['index_type']}")
+    log(f"Documents recorded in SQLite: {len(database.list_documents())}")
+
+    return {
+        "total_chunks": stats['total_chunks'],
+        "total_documents": len(database.list_documents()),
+        "dimension": stats['dimension'],
+        "index_type": stats['index_type'],
+    }
+
+
+def main():
+    """CLI entry point — preserves the original `python rebuild_faiss.py` behaviour."""
+    rebuild_index(docs_folder="../docs", verbose=True)
 
 
 if __name__ == "__main__":
