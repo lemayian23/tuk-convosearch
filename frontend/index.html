@@ -1,64 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TUK-ConvoSearch - AI Student Assistant</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TUK-ConvoSearch — AI Student Assistant</title>
     <style>
+        /* ---------- Reset & Base ---------- */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            background: #ffffff;
+            background: #0e0e12;
             height: 100vh;
             overflow: hidden;
+            color: #e4e4e7;
         }
-        
+        /* ---------- App Layout ---------- */
         .app-container {
             display: flex;
             height: 100vh;
             width: 100%;
-            background: #ffffff;
+            background: #0e0e12;
         }
-        
+        /* ---------- Sidebar (dark) ---------- */
         .sidebar {
             width: 280px;
-            background: #f7f7f8;
-            border-right: 1px solid #e5e5e5;
+            background: #18181e;
+            border-right: 1px solid #2a2a32;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            flex-shrink: 0;
         }
-        
         .sidebar-header {
             padding: 20px;
-            border-bottom: 1px solid #e5e5e5;
-            background: #ffffff;
+            border-bottom: 1px solid #2a2a32;
+            background: #18181e;
         }
-        
         .sidebar-header h2 {
             font-size: 16px;
             font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 4px;
+            color: #f0f0f0;
+            margin-bottom: 2px;
         }
-        
         .sidebar-header p {
             font-size: 12px;
-            color: #6c6c6c;
+            color: #8a8a96;
         }
-        
         .new-chat-btn {
-            background: #1a1a1a;
+            background: #2a2a32;
             border: none;
-            color: white;
+            color: #f0f0f0;
             padding: 10px 16px;
-            margin: 16px;
-            border-radius: 8px;
+            margin: 12px 16px 4px;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
@@ -68,51 +66,42 @@
             gap: 8px;
             transition: background 0.2s;
         }
-        
         .new-chat-btn:hover {
-            background: #333333;
+            background: #3a3a44;
         }
-        
         .conversations-list {
             flex: 1;
             overflow-y: auto;
-            padding: 8px;
+            padding: 8px 12px;
         }
-        
         .conversation-item {
-            padding: 12px;
-            margin-bottom: 4px;
-            background: transparent;
-            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 2px;
+            border-radius: 10px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.15s;
             position: relative;
         }
-        
         .conversation-item:hover {
-            background: #e8e8e8;
+            background: #282830;
         }
-        
         .conversation-item.active {
-            background: #e8e8e8;
+            background: #282830;
         }
-        
         .conversation-title {
             font-size: 14px;
             font-weight: 500;
-            color: #1a1a1a;
+            color: #e4e4e7;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            padding-right: 24px;
+            padding-right: 28px;
         }
-        
         .conversation-date {
             font-size: 11px;
-            color: #8e8e8e;
+            color: #7a7a86;
             margin-top: 4px;
         }
-        
         .delete-conv {
             position: absolute;
             right: 12px;
@@ -121,329 +110,453 @@
             opacity: 0;
             transition: opacity 0.2s;
             cursor: pointer;
-            color: #8e8e8e;
-            font-size: 12px;
+            color: #7a7a86;
+            font-size: 13px;
         }
-        
         .conversation-item:hover .delete-conv {
             opacity: 1;
         }
-        
         .delete-conv:hover {
             color: #e53935;
         }
-        
+        /* ---------- Chat Area ---------- */
         .chat-container {
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: #ffffff;
-            position: relative;
+            background: #0e0e12;
         }
-        
         .chat-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid #e5e5e5;
-            background: #ffffff;
+            padding: 16px 24px;
+            border-bottom: 1px solid #2a2a32;
+            background: #0e0e12;
+            flex-shrink: 0;
         }
-        
         .chat-header h1 {
             font-size: 20px;
             font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 4px;
+            color: #f0f0f0;
         }
-        
         .chat-header p {
             font-size: 13px;
-            color: #6c6c6c;
+            color: #8a8a96;
         }
-        
         .chat-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 24px;
-            background: #ffffff;
+            padding: 20px 24px;
+            background: #0e0e12;
         }
-        
+        /* ---------- Messages ---------- */
         .message {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             display: flex;
-            animation: fadeIn 0.3s ease;
+            animation: fadeSlideIn 0.25s ease;
         }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
         .message.user {
             justify-content: flex-end;
         }
-        
         .message-content {
-            max-width: 75%;
-            padding: 12px 16px;
-            border-radius: 20px;
+            max-width: 78%;
+            padding: 12px 18px;
+            border-radius: 18px;
             word-wrap: break-word;
-            line-height: 1.5;
-            font-size: 14px;
+            line-height: 1.6;
+            font-size: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
-        
         .message.user .message-content {
-            background: #1a1a1a;
-            color: white;
+            background: #2a2a34;
+            color: #f0f0f0;
             border-bottom-right-radius: 4px;
         }
-        
         .message.assistant .message-content {
-            background: #f7f7f8;
-            color: #1a1a1a;
+            background: #1c1c24;
+            color: #e4e4e7;
             border-bottom-left-radius: 4px;
+            border: 1px solid #2a2a34;
         }
-        
-        .sources {
+        /* ---------- Typing Indicator ---------- */
+        .typing-indicator {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+            padding: 4px 0;
+        }
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #7a7a8a;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-6px); opacity: 1; }
+        }
+        /* ---------- Sources Accordion ---------- */
+        .sources-accordion {
             margin-top: 12px;
+            border-top: 1px solid #2a2a34;
             padding-top: 10px;
-            border-top: 1px solid #e5e5e5;
-            font-size: 12px;
         }
-        
-        .sources strong {
-            color: #1a1a1a;
-            font-weight: 600;
+        .sources-toggle {
+            background: none;
+            border: none;
+            color: #8a8a96;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 4px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s;
         }
-        
+        .sources-toggle:hover {
+            color: #c0c0ce;
+        }
+        .sources-toggle::before {
+            content: '▶';
+            display: inline-block;
+            transition: transform 0.2s;
+            font-size: 10px;
+        }
+        .sources-toggle.open::before {
+            transform: rotate(90deg);
+        }
+        .sources-list {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .sources-list.open {
+            max-height: 500px; /* enough for several sources */
+        }
         .source-item {
             margin-top: 8px;
-            padding: 8px 10px;
-            background: #f7f7f8;
+            padding: 8px 12px;
+            background: #14141c;
             border-radius: 8px;
-            font-size: 11px;
+            font-size: 13px;
+            border-left: 2px solid #3a3a4a;
         }
-        
         .source-item strong {
-            color: #1a1a1a;
+            color: #c0c0ce;
         }
-        
         .source-quote {
-            color: #555555;
+            color: #9a9aaa;
             margin-top: 4px;
             font-style: italic;
-            line-height: 1.4;
+            font-size: 12px;
+            padding-left: 8px;
+            border-left: 1px solid #2a2a34;
         }
-        
+        /* ---------- Copy Button ---------- */
+        .copy-btn {
+            background: none;
+            border: none;
+            color: #7a7a8a;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .copy-btn:hover {
+            background: #2a2a34;
+            color: #e0e0e8;
+        }
+        .copy-btn.copied {
+            color: #4caf50;
+        }
+        /* ---------- Input Area ---------- */
         .chat-input-container {
-            padding: 16px 24px;
-            background: #ffffff;
-            border-top: 1px solid #e5e5e5;
+            padding: 12px 24px 20px;
+            background: #0e0e12;
+            border-top: 1px solid #2a2a32;
             display: flex;
             gap: 12px;
+            flex-shrink: 0;
         }
-        
         .chat-input {
             flex: 1;
-            padding: 12px 16px;
-            border: 1px solid #e5e5e5;
+            padding: 12px 18px;
+            background: #18181e;
+            border: 1px solid #2a2a34;
             border-radius: 12px;
-            font-size: 14px;
+            font-size: 15px;
+            color: #f0f0f0;
             outline: none;
             transition: border-color 0.2s;
             font-family: inherit;
         }
-        
-        .chat-input:focus {
-            border-color: #1a1a1a;
+        .chat-input::placeholder {
+            color: #6a6a78;
         }
-        
+        .chat-input:focus {
+            border-color: #4a4a5a;
+        }
         .send-button {
             padding: 12px 24px;
-            background: #1a1a1a;
-            color: white;
+            background: #2a2a3a;
+            color: #f0f0f0;
             border: none;
             border-radius: 12px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
             transition: background 0.2s;
         }
-        
         .send-button:hover {
-            background: #333333;
+            background: #3a3a4a;
         }
-        
         .send-button:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
         }
-        
-        .typing {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #8e8e8e;
-            animation: typing 1.4s infinite;
-        }
-        
-        @keyframes typing {
-            0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
-            30% { opacity: 1; transform: translateY(-6px); }
-        }
-        
         .suggestions-container {
-            padding: 0 24px 16px 24px;
+            padding: 0 24px 12px;
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+            background: #0e0e12;
+        }
+        .suggestion {
+            background: #1c1c24;
+            border: 1px solid #2a2a34;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #c0c0ce;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .suggestion:hover {
+            background: #2a2a34;
+        }
+        /* ---------- Scrollbar ---------- */
+        .chat-messages::-webkit-scrollbar,
+        .conversations-list::-webkit-scrollbar {
+            width: 5px;
+        }
+        .chat-messages::-webkit-scrollbar-track,
+        .conversations-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-messages::-webkit-scrollbar-thumb,
+        .conversations-list::-webkit-scrollbar-thumb {
+            background: #3a3a4a;
+            border-radius: 10px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #5a5a6a;
+        }
+        /* ---------- Responsive ---------- */
+        @media (max-width: 640px) {
+            .sidebar {
+                width: 220px;
+            }
+            .chat-header h1 {
+                font-size: 17px;
+            }
+            .message-content {
+                max-width: 90%;
+                font-size: 14px;
+            }
+            .chat-input {
+                font-size: 14px;
+            }
+        }
+        /* ---------- Light Mode Overrides ---------- */
+        body.light-mode {
+            background: #f4f4f8;
+            color: #1a1a1e;
+        }
+        body.light-mode .app-container {
+            background: #f4f4f8;
+        }
+        body.light-mode .sidebar,
+        body.light-mode .sidebar-header,
+        body.light-mode .chat-container,
+        body.light-mode .chat-header,
+        body.light-mode .chat-input-container,
+        body.light-mode .suggestions-container {
             background: #ffffff;
         }
-        
-        .suggestion {
-            background: #f0f0f0;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background 0.2s;
+        body.light-mode .sidebar {
+            border-right-color: #e0e0e6;
         }
-        
-        .suggestion:hover {
-            background: #e0e0e0;
+        body.light-mode .sidebar-header {
+            border-bottom-color: #e0e0e6;
         }
-        
-        /* Dark Mode Styles */
-        body.dark-mode {
-            background: #1a1a1a;
+        body.light-mode .sidebar-header h2 {
+            color: #1a1a1e;
         }
-        
-        body.dark-mode .sidebar,
-        body.dark-mode .chat-container,
-        body.dark-mode .chat-header,
-        body.dark-mode .chat-input-container,
-        body.dark-mode .suggestions-container {
-            background: #2a2a2a;
+        body.light-mode .sidebar-header p {
+            color: #6a6a72;
         }
-        
-        body.dark-mode .sidebar {
-            background: #1e1e1e;
-            border-right-color: #333;
+        body.light-mode .new-chat-btn {
+            background: #e8e8ee;
+            color: #1a1a1e;
         }
-        
-        body.dark-mode .sidebar-header {
-            background: #1e1e1e;
+        body.light-mode .new-chat-btn:hover {
+            background: #d0d0d8;
         }
-        
-        body.dark-mode .message.assistant .message-content {
-            background: #2a2a2a;
-            color: #e0e0e0;
+        body.light-mode .conversation-item:hover,
+        body.light-mode .conversation-item.active {
+            background: #e8e8ee;
         }
-        
-        body.dark-mode .chat-input {
-            background: #2a2a2a;
-            color: white;
-            border-color: #444;
+        body.light-mode .conversation-title {
+            color: #1a1a1e;
         }
-        
-        body.dark-mode .suggestion {
-            background: #3a3a3a;
-            color: white;
+        body.light-mode .conversation-date {
+            color: #6a6a72;
         }
-        
-        body.dark-mode .suggestion:hover {
-            background: #4a4a4a;
+        body.light-mode .chat-header {
+            border-bottom-color: #e0e0e6;
         }
-        
-        .conversations-list::-webkit-scrollbar,
-        .chat-messages::-webkit-scrollbar {
-            width: 6px;
+        body.light-mode .chat-header h1 {
+            color: #1a1a1e;
         }
-        
-        .conversations-list::-webkit-scrollbar-track,
-        .chat-messages::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
+        body.light-mode .chat-header p {
+            color: #6a6a72;
         }
-        
-        .conversations-list::-webkit-scrollbar-thumb,
-        .chat-messages::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 10px;
+        body.light-mode .message.user .message-content {
+            background: #1a1a1e;
+            color: #f0f0f0;
         }
-        
-        .empty-state {
-            text-align: center;
-            color: #8e8e8e;
-            padding: 40px;
-            font-size: 14px;
+        body.light-mode .message.assistant .message-content {
+            background: #f0f0f4;
+            color: #1a1a1e;
+            border-color: #d0d0d8;
+        }
+        body.light-mode .chat-input {
+            background: #f0f0f4;
+            border-color: #d0d0d8;
+            color: #1a1a1e;
+        }
+        body.light-mode .chat-input::placeholder {
+            color: #8a8a92;
+        }
+        body.light-mode .send-button {
+            background: #1a1a1e;
+            color: #f0f0f0;
+        }
+        body.light-mode .send-button:hover {
+            background: #3a3a3e;
+        }
+        body.light-mode .suggestion {
+            background: #e8e8ee;
+            border-color: #d0d0d8;
+            color: #1a1a1e;
+        }
+        body.light-mode .suggestion:hover {
+            background: #d0d0d8;
+        }
+        body.light-mode .sources-toggle {
+            color: #6a6a72;
+        }
+        body.light-mode .sources-toggle:hover {
+            color: #1a1a1e;
+        }
+        body.light-mode .source-item {
+            background: #f0f0f4;
+            border-left-color: #d0d0d8;
+        }
+        body.light-mode .source-item strong {
+            color: #1a1a1e;
+        }
+        body.light-mode .source-quote {
+            color: #6a6a72;
+        }
+        body.light-mode .copy-btn {
+            color: #6a6a72;
+        }
+        body.light-mode .copy-btn:hover {
+            background: #d0d0d8;
+            color: #1a1a1e;
+        }
+        body.light-mode .typing-dot {
+            background: #6a6a72;
+        }
+        body.light-mode .chat-messages::-webkit-scrollbar-thumb {
+            background: #c0c0c8;
         }
     </style>
-    <audio id="popSound" preload="auto">
-        <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3" type="audio/mpeg">
-    </audio>
 </head>
 <body>
     <div class="app-container">
+        <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h2>Chat History</h2>
-                <p>Your previous conversations</p>
+                <h2>💬 History</h2>
+                <p>Your conversations</p>
             </div>
-            <button class="new-chat-btn" onclick="createNewChat()">
-                + New Chat
-            </button>
-            <button class="new-chat-btn" onclick="clearCurrentChat()" style="background: #555; margin-top: 0;">
-                🧹 Clear Current Chat
-            </button>
-            <button class="new-chat-btn" onclick="toggleDarkMode()" style="background: #555; margin-top: 0;">
-                🌙 Dark Mode
-            </button>
+            <button class="new-chat-btn" onclick="createNewChat()">+ New Chat</button>
+            <button class="new-chat-btn" onclick="clearCurrentChat()" style="margin-top: 4px;">🧹 Clear Chat</button>
+            <button class="new-chat-btn" onclick="toggleDarkMode()" style="margin-top: 4px;" id="darkModeToggle">🌙 Dark</button>
             <div class="conversations-list" id="conversationsList"></div>
         </div>
-        
+
+        <!-- Chat Area -->
         <div class="chat-container">
             <div class="chat-header">
                 <h1>TUK-ConvoSearch</h1>
-                <p>AI Student Assistant | Ask me anything about TU-K</p>
+                <p>AI Student Assistant · Powered by RAG</p>
             </div>
-            
+
             <div class="chat-messages" id="chatMessages">
-                <div class="message assistant">
-                    <div class="message-content">
-                        👋 Hi! I'm TUK-ConvoSearch, your AI assistant.<br><br>
-                        I can help you find information about:
-                        <ul style="margin-top: 8px; margin-left: 20px;">
-                            <li>Academic calendars and exam dates</li>
-                            <li>Fee payment deadlines</li>
-                            <li>Registration procedures</li>
-                            <li>Campus facilities and services</li>
-                        </ul>
-                        <br>
-                        What would you like to know?
-                    </div>
-                </div>
+                <!-- Initial welcome message will be added by JS -->
             </div>
-            
+
             <div class="suggestions-container">
-                <button class="suggestion" onclick="askSuggestion('When do exams start?')">📅 When do exams start?</button>
+                <button class="suggestion" onclick="askSuggestion('When do exams start?')">📅 Exam dates</button>
                 <button class="suggestion" onclick="askSuggestion('What are the project guidelines?')">📝 Project guidelines</button>
-                <button class="suggestion" onclick="askSuggestion('Where is the university located?')">📍 University location</button>
+                <button class="suggestion" onclick="askSuggestion('Where is TU-K located?')">📍 Campus location</button>
             </div>
-            
+
             <div class="chat-input-container">
-                <input type="text" class="chat-input" id="chatInput" placeholder="Ask me anything about TU-K..." onkeypress="handleKeyPress(event)">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Ask anything about TU-K..." onkeypress="handleKeyPress(event)">
                 <button class="send-button" id="sendButton" onclick="sendMessageStream()">Send</button>
             </div>
         </div>
     </div>
 
     <script>
-        const API_URL = 'http://localhost:8000/api/chat';
-        
+        // ---------- Configuration ----------
+        const API_BASE = 'http://localhost:8000/api';
+        const STREAM_URL = `${API_BASE}/chat/stream`;
+
+        // ---------- State ----------
         let conversations = [];
         let currentConversationId = null;
-        
+        let isLightMode = false;
+
+        // ---------- DOM refs ----------
+        const messagesDiv = document.getElementById('chatMessages');
+        const inputField = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendButton');
+        const listDiv = document.getElementById('conversationsList');
+        const darkToggle = document.getElementById('darkModeToggle');
+
+        // ---------- Utility ----------
+        function scrollToBottom() {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function formatDate(timestamp) {
+            const d = new Date(timestamp);
+            return `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        }
+
+        // ---------- Conversation Management ----------
         function loadConversations() {
             const saved = localStorage.getItem('tuk_conversations');
             if (saved) {
@@ -457,250 +570,246 @@
                 loadConversation(currentConversationId);
             }
         }
-        
+
         function saveConversations() {
             localStorage.setItem('tuk_conversations', JSON.stringify(conversations));
         }
-        
-        function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            const btn = event.target;
-            btn.textContent = document.body.classList.contains('dark-mode') ? '☀️ Light Mode' : '🌙 Dark Mode';
-        }
-        
+
         function createNewChat() {
-            const newConversation = {
+            const newConv = {
                 id: Date.now().toString(),
                 title: 'New Chat',
                 date: new Date().toISOString(),
                 messages: [
                     {
                         role: 'assistant',
-                        content: '👋 Hi! I\'m TUK-ConvoSearch. What would you like to know about TU-K?',
+                        content: '👋 Hi! I\'m TUK-ConvoSearch. Ask me anything about TU‑K — exams, fees, registration, campus services, or procedures.',
                         sources: null,
                         timestamp: new Date().toISOString()
                     }
                 ]
             };
-            conversations.unshift(newConversation);
-            currentConversationId = newConversation.id;
+            conversations.unshift(newConv);
+            currentConversationId = newConv.id;
             saveConversations();
             renderConversationsList();
             loadConversation(currentConversationId);
         }
-        
-        function askSuggestion(question) {
-            document.getElementById('chatInput').value = question;
-            sendMessageStream();
-        }
-        
-        function loadConversation(conversationId) {
-            const conversation = conversations.find(c => c.id === conversationId);
-            if (!conversation) return;
-            
-            currentConversationId = conversationId;
-            
-            document.querySelectorAll('.conversation-item').forEach(item => {
-                item.classList.remove('active');
-                if (item.dataset.id === conversationId) {
-                    item.classList.add('active');
-                }
-            });
-            
-            const messagesDiv = document.getElementById('chatMessages');
+
+        function loadConversation(convId) {
+            const conv = conversations.find(c => c.id === convId);
+            if (!conv) return;
+            currentConversationId = convId;
+
+            // update active highlight
+            document.querySelectorAll('.conversation-item').forEach(el => el.classList.remove('active'));
+            const activeItem = document.querySelector(`.conversation-item[data-id="${convId}"]`);
+            if (activeItem) activeItem.classList.add('active');
+
+            // render messages
             messagesDiv.innerHTML = '';
-            
-            conversation.messages.forEach(msg => {
+            conv.messages.forEach(msg => {
                 addMessageToUI(msg.content, msg.role, msg.sources, false);
             });
-            
-            const firstUserMsg = conversation.messages.find(m => m.role === 'user');
-            if (firstUserMsg && conversation.title === 'New Chat') {
-                conversation.title = firstUserMsg.content.substring(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '');
+            scrollToBottom();
+
+            // update title if first user message exists and title is default
+            const firstUser = conv.messages.find(m => m.role === 'user');
+            if (firstUser && conv.title === 'New Chat') {
+                conv.title = firstUser.content.substring(0, 30) + (firstUser.content.length > 30 ? '...' : '');
                 saveConversations();
                 renderConversationsList();
             }
         }
-        
-        function deleteConversation(conversationId, event) {
+
+        function renderConversationsList() {
+            listDiv.innerHTML = '';
+            if (conversations.length === 0) {
+                listDiv.innerHTML = '<div style="padding:20px;text-align:center;color:#6a6a78;font-size:14px;">No chats yet</div>';
+                return;
+            }
+            conversations.forEach(conv => {
+                const item = document.createElement('div');
+                item.className = 'conversation-item' + (conv.id === currentConversationId ? ' active' : '');
+                item.dataset.id = conv.id;
+                item.onclick = () => loadConversation(conv.id);
+                item.innerHTML = `
+                    <div class="conversation-title">${conv.title}</div>
+                    <div class="conversation-date">${formatDate(conv.date)}</div>
+                    <span class="delete-conv" onclick="deleteConversation('${conv.id}', event)">🗑️</span>
+                `;
+                listDiv.appendChild(item);
+            });
+        }
+
+        function deleteConversation(convId, event) {
             event.stopPropagation();
             if (conversations.length === 1) {
                 createNewChat();
+                return;
             }
-            conversations = conversations.filter(c => c.id !== conversationId);
-            if (currentConversationId === conversationId) {
+            conversations = conversations.filter(c => c.id !== convId);
+            if (currentConversationId === convId) {
                 currentConversationId = conversations[0]?.id || null;
-                if (currentConversationId) {
-                    loadConversation(currentConversationId);
-                } else {
-                    createNewChat();
-                }
+                if (currentConversationId) loadConversation(currentConversationId);
+                else createNewChat();
             }
             saveConversations();
             renderConversationsList();
         }
-        
-        function renderConversationsList() {
-            const listDiv = document.getElementById('conversationsList');
-            listDiv.innerHTML = '';
-            
-            if (conversations.length === 0) {
-                listDiv.innerHTML = '<div class="empty-state">No conversations yet</div>';
-                return;
-            }
-            
-            conversations.forEach(conv => {
-                const convDiv = document.createElement('div');
-                convDiv.className = 'conversation-item';
-                if (conv.id === currentConversationId) {
-                    convDiv.classList.add('active');
-                }
-                convDiv.dataset.id = conv.id;
-                convDiv.onclick = () => loadConversation(conv.id);
-                
-                const date = new Date(conv.date);
-                const formattedDate = `${date.getMonth()+1}/${date.getDate()} - ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
-                
-                convDiv.innerHTML = `
-                    <div class="conversation-title">${conv.title}</div>
-                    <div class="conversation-date">${formattedDate}</div>
-                    <span class="delete-conv" onclick="deleteConversation('${conv.id}', event)">🗑️</span>
-                `;
-                listDiv.appendChild(convDiv);
-            });
-        }
-        
+
         function clearCurrentChat() {
-            if (currentConversationId) {
-                const conversation = conversations.find(c => c.id === currentConversationId);
-                if (conversation) {
-                    conversation.messages = [conversation.messages[0]];
-                    saveConversations();
-                    loadConversation(currentConversationId);
-                }
+            if (!currentConversationId) return;
+            const conv = conversations.find(c => c.id === currentConversationId);
+            if (conv) {
+                conv.messages = conv.messages.slice(0, 1); // keep only the first assistant message
+                saveConversations();
+                loadConversation(currentConversationId);
             }
         }
-        
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text);
-            alert('✓ Copied to clipboard!');
-        }
-        
+
+        // ---------- UI Message Rendering ----------
         function addMessageToUI(content, role, sources, saveToConversation = true) {
-            const messagesDiv = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${role}`;
-            
-            let formattedText = content
+            const wrapper = document.createElement('div');
+            wrapper.className = `message ${role}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'message-content';
+
+            // Render markdown-like bold
+            let formatted = content
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\n/g, '<br>');
-            
-            let sourcesHtml = '';
-            if (sources && sources.length > 0) {
-                sourcesHtml = '<div class="sources"><strong>Sources</strong><br>';
-                sources.forEach(source => {
-                    sourcesHtml += `<div class="source-item">`;
-                    sourcesHtml += `<strong>📄 ${source.source}</strong>`;
-                    if (source.quote) {
-                        sourcesHtml += `<div class="source-quote">"${source.quote.substring(0, 200)}${source.quote.length > 200 ? '...' : ''}"</div>`;
-                    }
-                    sourcesHtml += `</div>`;
-                });
-                sourcesHtml += '</div>';
-            }
-            
+
+            // Copy button for assistant
             if (role === 'assistant') {
-                const escapedContent = content.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                messageDiv.innerHTML = `
-                    <div class="message-content">
-                        ${formattedText}
-                        <div style="margin-top: 8px;">
-                            <button onclick="copyToClipboard('${escapedContent}')" style="background: none; border: none; cursor: pointer; color: #888; font-size: 12px;">📋 Copy</button>
-                        </div>
-                        ${sourcesHtml}
-                    </div>
-                `;
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.textContent = '📋 Copy';
+                copyBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const text = content;
+                    navigator.clipboard.writeText(text).then(() => {
+                        copyBtn.textContent = '✅ Copied!';
+                        copyBtn.classList.add('copied');
+                        setTimeout(() => {
+                            copyBtn.textContent = '📋 Copy';
+                            copyBtn.classList.remove('copied');
+                        }, 2000);
+                    });
+                };
+                bubble.innerHTML = formatted;
+                bubble.appendChild(document.createElement('br'));
+                bubble.appendChild(copyBtn);
+
+                // Sources accordion
+                if (sources && sources.length > 0) {
+                    const accordion = document.createElement('div');
+                    accordion.className = 'sources-accordion';
+
+                    const toggle = document.createElement('button');
+                    toggle.className = 'sources-toggle';
+                    toggle.textContent = `${sources.length} source${sources.length > 1 ? 's' : ''}`;
+                    toggle.onclick = (e) => {
+                        e.stopPropagation();
+                        const list = accordion.querySelector('.sources-list');
+                        const isOpen = list.classList.toggle('open');
+                        toggle.classList.toggle('open');
+                    };
+
+                    const list = document.createElement('div');
+                    list.className = 'sources-list';
+                    sources.forEach(src => {
+                        const item = document.createElement('div');
+                        item.className = 'source-item';
+                        const title = document.createElement('strong');
+                        title.textContent = `📄 ${src.source || 'Document'}`;
+                        item.appendChild(title);
+                        if (src.quote) {
+                            const quote = document.createElement('div');
+                            quote.className = 'source-quote';
+                            quote.textContent = `"${src.quote.substring(0, 200)}${src.quote.length > 200 ? '...' : ''}"`;
+                            item.appendChild(quote);
+                        }
+                        list.appendChild(item);
+                    });
+
+                    accordion.appendChild(toggle);
+                    accordion.appendChild(list);
+                    bubble.appendChild(accordion);
+                }
             } else {
-                messageDiv.innerHTML = `
-                    <div class="message-content">
-                        ${formattedText}
-                    </div>
-                `;
+                bubble.innerHTML = formatted;
             }
-            
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            
+
+            wrapper.appendChild(bubble);
+            messagesDiv.appendChild(wrapper);
+            scrollToBottom();
+
             if (saveToConversation && currentConversationId) {
-                const conversation = conversations.find(c => c.id === currentConversationId);
-                if (conversation) {
-                    conversation.messages.push({
+                const conv = conversations.find(c => c.id === currentConversationId);
+                if (conv) {
+                    conv.messages.push({
                         role: role,
                         content: content,
                         sources: sources || null,
                         timestamp: new Date().toISOString()
                     });
                     saveConversations();
+                    // update title if needed
+                    if (role === 'user' && conv.title === 'New Chat') {
+                        conv.title = content.substring(0, 30) + (content.length > 30 ? '...' : '');
+                        renderConversationsList();
+                        saveConversations();
+                    }
                 }
             }
         }
-        
-        function showTypingIndicator() {
-            const messagesDiv = document.getElementById('chatMessages');
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'message assistant';
-            typingDiv.id = 'typingIndicator';
-            typingDiv.innerHTML = `
+
+        // ---------- Typing Indicator ----------
+        function showTyping() {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'message assistant';
+            wrapper.id = 'typingIndicator';
+            wrapper.innerHTML = `
                 <div class="message-content">
-                    <span class="typing"></span>
-                    <span class="typing" style="animation-delay: 0.2s"></span>
-                    <span class="typing" style="animation-delay: 0.4s"></span>
+                    <div class="typing-indicator">
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                    </div>
                 </div>
             `;
-            messagesDiv.appendChild(typingDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            messagesDiv.appendChild(wrapper);
+            scrollToBottom();
         }
-        
-        function removeTypingIndicator() {
-            const indicator = document.getElementById('typingIndicator');
-            if (indicator) indicator.remove();
+
+        function removeTyping() {
+            const el = document.getElementById('typingIndicator');
+            if (el) el.remove();
         }
-        
 
-        const STREAM_API_URL = 'http://localhost:8000/api/chat/stream';
-
+        // ---------- Send Message (Streaming) ----------
         async function sendMessageStream() {
-            const input = document.getElementById('chatInput');
-            const message = input.value.trim();
-
+            const message = inputField.value.trim();
             if (!message) return;
+            inputField.value = '';
+            sendBtn.disabled = true;
 
-            input.value = '';
+            // Add user message to UI and history
             addMessageToUI(message, 'user', null, true);
 
-            const sendButton = document.getElementById('sendButton');
-            sendButton.disabled = true;
+            // Show typing indicator
+            showTyping();
 
-            // Create an empty assistant bubble we will fill in as tokens arrive.
-            const messagesDiv = document.getElementById('chatMessages');
-            const assistantDiv = document.createElement('div');
-            assistantDiv.className = 'message assistant';
-            assistantDiv.innerHTML = `
-                <div class="message-content" id="streamingContent">
-                    <span class="typing"></span>
-                    <span class="typing" style="animation-delay: 0.2s"></span>
-                    <span class="typing" style="animation-delay: 0.4s"></span>
-                </div>
-            `;
-            messagesDiv.appendChild(assistantDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-            const contentDiv = document.getElementById('streamingContent');
+            // We'll create the assistant bubble only after first token arrives
+            let assistantWrapper = null;
+            let contentDiv = null;
             let accumulatedText = '';
-            let receivedSources = [];
+            let sourcesReceived = [];
 
             try {
-                const response = await fetch(STREAM_API_URL, {
+                const response = await fetch(STREAM_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -710,117 +819,181 @@
                 });
 
                 if (!response.ok || !response.body) {
-                    throw new Error('Stream request failed');
+                    throw new Error(`Server error: ${response.status}`);
                 }
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let buffer = '';
-                let firstTokenReceived = false;
+                let firstToken = false;
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
 
                     buffer += decoder.decode(value, { stream: true });
-
-                    // SSE events are separated by a blank line ("\n\n")
                     const events = buffer.split('\n\n');
-                    buffer = events.pop(); // keep any incomplete trailing chunk
+                    buffer = events.pop();
 
-                    for (const rawEvent of events) {
-                        const line = rawEvent.trim();
+                    for (const raw of events) {
+                        const line = raw.trim();
                         if (!line.startsWith('data:')) continue;
-
                         const jsonStr = line.slice(5).trim();
                         if (!jsonStr) continue;
 
                         let evt;
-                        try {
-                            evt = JSON.parse(jsonStr);
-                        } catch (e) {
-                            continue; // skip malformed event
-                        }
+                        try { evt = JSON.parse(jsonStr); } catch (e) { continue; }
 
                         if (evt.type === 'sources') {
-                            receivedSources = evt.sources || [];
+                            sourcesReceived = evt.sources || [];
                         } else if (evt.type === 'token') {
-                            if (!firstTokenReceived) {
-                                firstTokenReceived = true;
-                                contentDiv.innerHTML = ''; // clear the typing dots
+                            // Create assistant bubble on first token
+                            if (!firstToken) {
+                                removeTyping();
+                                // Create fresh assistant message wrapper
+                                assistantWrapper = document.createElement('div');
+                                assistantWrapper.className = 'message assistant';
+                                contentDiv = document.createElement('div');
+                                contentDiv.className = 'message-content';
+                                assistantWrapper.appendChild(contentDiv);
+                                messagesDiv.appendChild(assistantWrapper);
+                                firstToken = true;
                             }
                             accumulatedText += evt.content;
+                            // Update the content with formatting
                             contentDiv.innerHTML = accumulatedText
                                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                                 .replace(/\n/g, '<br>');
-                            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                            scrollToBottom();
                         } else if (evt.type === 'done') {
-                            // Append the copy button + sources panel, same as non-streaming path
-                            let sourcesHtml = '';
-                            if (receivedSources && receivedSources.length > 0) {
-                                sourcesHtml = '<div class="sources"><strong>Sources</strong><br>';
-                                receivedSources.forEach(source => {
-                                    sourcesHtml += `<div class="source-item">`;
-                                    sourcesHtml += `<strong>📄 ${source.source}</strong>`;
-                                    if (source.quote) {
-                                        sourcesHtml += `<div class="source-quote">"${source.quote.substring(0, 200)}${source.quote.length > 200 ? '...' : ''}"</div>`;
-                                    }
-                                    sourcesHtml += `</div>`;
+                            // Finalize the assistant message with copy button and sources
+                            if (!firstToken) {
+                                removeTyping();
+                                // No tokens received (maybe off-topic with only sources?)
+                                // The backend should send at least a token with fallback message.
+                                // But handle gracefully.
+                                assistantWrapper = document.createElement('div');
+                                assistantWrapper.className = 'message assistant';
+                                contentDiv = document.createElement('div');
+                                contentDiv.className = 'message-content';
+                                assistantWrapper.appendChild(contentDiv);
+                                messagesDiv.appendChild(assistantWrapper);
+                                firstToken = true;
+                            }
+                            // Add copy button
+                            const copyBtn = document.createElement('button');
+                            copyBtn.className = 'copy-btn';
+                            copyBtn.textContent = '📋 Copy';
+                            copyBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                const text = accumulatedText;
+                                navigator.clipboard.writeText(text).then(() => {
+                                    copyBtn.textContent = '✅ Copied!';
+                                    copyBtn.classList.add('copied');
+                                    setTimeout(() => {
+                                        copyBtn.textContent = '📋 Copy';
+                                        copyBtn.classList.remove('copied');
+                                    }, 2000);
                                 });
-                                sourcesHtml += '</div>';
+                            };
+                            contentDiv.appendChild(document.createElement('br'));
+                            contentDiv.appendChild(copyBtn);
+
+                            // Sources accordion
+                            if (sourcesReceived && sourcesReceived.length > 0) {
+                                const accordion = document.createElement('div');
+                                accordion.className = 'sources-accordion';
+
+                                const toggle = document.createElement('button');
+                                toggle.className = 'sources-toggle';
+                                toggle.textContent = `${sourcesReceived.length} source${sourcesReceived.length > 1 ? 's' : ''}`;
+                                toggle.onclick = (e) => {
+                                    e.stopPropagation();
+                                    const list = accordion.querySelector('.sources-list');
+                                    const isOpen = list.classList.toggle('open');
+                                    toggle.classList.toggle('open');
+                                };
+
+                                const list = document.createElement('div');
+                                list.className = 'sources-list';
+                                sourcesReceived.forEach(src => {
+                                    const item = document.createElement('div');
+                                    item.className = 'source-item';
+                                    const title = document.createElement('strong');
+                                    title.textContent = `📄 ${src.source || 'Document'}`;
+                                    item.appendChild(title);
+                                    if (src.quote) {
+                                        const quote = document.createElement('div');
+                                        quote.className = 'source-quote';
+                                        quote.textContent = `"${src.quote.substring(0, 200)}${src.quote.length > 200 ? '...' : ''}"`;
+                                        item.appendChild(quote);
+                                    }
+                                    list.appendChild(item);
+                                });
+
+                                accordion.appendChild(toggle);
+                                accordion.appendChild(list);
+                                contentDiv.appendChild(accordion);
                             }
 
-                            const escapedContent = accumulatedText.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                            contentDiv.innerHTML = accumulatedText
-                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                .replace(/\n/g, '<br>')
-                                + `<div style="margin-top: 8px;">
-                                    <button onclick="copyToClipboard('${escapedContent}')" style="background: none; border: none; cursor: pointer; color: #888; font-size: 12px;">📋 Copy</button>
-                                </div>${sourcesHtml}`;
-
-                            // Persist to conversation history (localStorage), same shape as non-streaming path
+                            // Save to conversation history
                             if (currentConversationId) {
-                                const conversation = conversations.find(c => c.id === currentConversationId);
-                                if (conversation) {
-                                    conversation.messages.push({
+                                const conv = conversations.find(c => c.id === currentConversationId);
+                                if (conv) {
+                                    conv.messages.push({
                                         role: 'assistant',
                                         content: accumulatedText,
-                                        sources: receivedSources,
+                                        sources: sourcesReceived,
                                         timestamp: new Date().toISOString()
                                     });
-                                    if (conversation.title === 'New Chat') {
-                                        conversation.title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
-                                        renderConversationsList();
-                                    }
                                     saveConversations();
                                 }
                             }
-
-                            // Play the same notification sound as the non-streaming path
-                            const popSound = document.getElementById('popSound');
-                            if (popSound) popSound.play().catch(e => console.log('Audio play failed'));
+                            scrollToBottom();
                         }
                     }
                 }
-
             } catch (error) {
-                contentDiv.innerHTML = 'Sorry, I encountered an error. Please make sure the backend server is running.';
+                removeTyping();
+                const errorMsg = `⚠️ Error: ${error.message}. Make sure the backend is running.`;
+                // Show error as assistant message
+                const wrapper = document.createElement('div');
+                wrapper.className = 'message assistant';
+                wrapper.innerHTML = `<div class="message-content">${errorMsg}</div>`;
+                messagesDiv.appendChild(wrapper);
+                scrollToBottom();
+                // Also log to console
                 console.error('Stream error:', error);
+            } finally {
+                sendBtn.disabled = false;
+                inputField.focus();
             }
-
-            sendButton.disabled = false;
         }
 
-        // Enter-key handler that uses the streaming version
+        // ---------- Event Handlers ----------
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
                 sendMessageStream();
             }
         }
-        
 
-        
+        function askSuggestion(question) {
+            inputField.value = question;
+            sendMessageStream();
+        }
+
+        function toggleDarkMode() {
+            isLightMode = !isLightMode;
+            document.body.classList.toggle('light-mode', isLightMode);
+            darkToggle.textContent = isLightMode ? '☀️ Light' : '🌙 Dark';
+        }
+
+        // ---------- Load initial data ----------
         loadConversations();
+
+        // Ensure dark mode is default
+        document.body.classList.remove('light-mode');
+        darkToggle.textContent = '🌙 Dark';
     </script>
 </body>
 </html>
