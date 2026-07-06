@@ -35,7 +35,7 @@ class RAGServiceProposal:
             'tuk', 'technical university', 'kenya', 'exam', 'registration',
             'fee', 'campus', 'library', 'student', 'course', 'department',
             'lecture', 'academic', 'calendar', 'deadline', 'semester',
-            'project', 'guideline', 'proposal', 'timetable', 'computing',
+            'project', 'guideline', 'proposal', 'timetable', 'computing', 'information technology',
             'graduation', 'degree', 'diploma', 'upgrade', 'evaluation'
         ]
 
