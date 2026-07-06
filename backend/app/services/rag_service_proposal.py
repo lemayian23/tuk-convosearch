@@ -206,7 +206,7 @@ ANSWER (with source citations):"""
             print(f"  ⚠ Query logging failed (non-fatal): {e}")
 
     # ------------------------------------------------------------------ #
-    # Standard (non-streaming) answer
+    #           Standard (non-streaming) answer
     # ------------------------------------------------------------------ #
 
     def answer_question(self, question: str, session_id: str = "default", k: int = 5) -> Dict[str, Any]:
@@ -313,7 +313,7 @@ ANSWER (with source citations):"""
         return result
 
     # ------------------------------------------------------------------ #
-    # Streaming answer (word-by-word via Ollama's native streaming)
+    #     Streaming answer (word-by-word via Ollama's native streaming)
     # ------------------------------------------------------------------ #
 
     def stream_answer(self, question: str, session_id: str = "default", k: int = 5) -> Generator[Dict[str, Any], None, None]:
