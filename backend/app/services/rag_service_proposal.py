@@ -426,7 +426,7 @@ ANSWER (with source citations):"""
         yield {'type': 'done', 'response_time': float(elapsed)}
 
     # ------------------------------------------------------------------ #
-    # Stats / admin helpers
+    # Statisticss OR admin helpers
     # ------------------------------------------------------------------ #
 
     def get_stats(self) -> Dict[str, Any]:
