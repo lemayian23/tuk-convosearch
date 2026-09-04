@@ -83,7 +83,7 @@ function LoginPage({ onLogin }) {
           </button>
         </form>
         <p style={{ marginTop: 16, fontSize: 12, color: "#888", textAlign: "center" }}>
-          Default: admin@tuk.ac.ke / Admin2026!
+          
         </p>
       </div>
     </div>

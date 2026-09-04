@@ -956,7 +956,7 @@ function buildSources(sources) {
   toggle.innerHTML = `<span class="src-arrow">▶</span> ${sources.length} source${sources.length !== 1 ? 's' : ''} used`;
   toggle.onclick = e => {
     e.stopPropagation();
-    body.classList.toggle('open');
+    body_.classList.toggle('open');
     toggle.classList.toggle('open');
   };
 
