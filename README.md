@@ -96,19 +96,21 @@ Students spend **3-4 hours per week** searching for basic information like exam 
 git clone https://github.com/lemayian23/tuk-convosearch.git
 cd tuk-convosearch
 
-Step 2: Create Virtual Environment
+### Step 2: Create Virtual Environment
 bash
 python -m venv venv
 venv\Scripts\activate        # Windows
 # source venv/bin/activate    # Linux/Mac
-Step 3: Install Dependencies
+### Step 3: Install Dependencies
 bash
 pip install -r requirements.txt
 Step 4: Install Ollama and Pull Model
 bash
-# Download Ollama from https://ollama.com/download
+###Step 4: Download Ollama from https://ollama.com/download
 ollama pull llama3.2:1b
-Step 5: Configure Environment
+
+
+### Step 5: Configure Environment
 bash
 copy .env.example .env
 notepad .env
@@ -127,10 +129,10 @@ TOP_K=5
 SIMILARITY_THRESHOLD=0.5
 MAX_CRITIC_RETRIES=2
 JWT_SECRET_KEY=your_secret_key_here
-Step 6: Add Documents to Knowledge Base
-Place official TU-K documents in the docs/ folder:
 
-text
+
+###Step 6: Add Documents to Knowledge Base
+Place official TU-K documents in the docs/ folder:
 docs/
 ├── e-Booklet March 2026.pdf
 ├── SEMESTER TWO MAY 2026 EXAMINATION TIMETABLE.pdf
@@ -139,12 +141,13 @@ docs/
 └── Upgrade-From-Diploma-to-Degree-at-TU-K-2026.pdf
 Supported formats: PDF, DOCX, TXT
 
+
+
+
 Step 7: Build the FAISS Index
 bash
 python rebuild_faiss.py
 Expected output:
-
-text
 Loading documents from ./docs/...
 Loaded 7 documents
 Created 66 chunks
@@ -156,22 +159,25 @@ bash
 python -m uvicorn app.main:app --reload
 Server will start at: http://localhost:8000
 
-Step 9: Start the Admin Panel (Optional)
-Open a new terminal:
 
+
+### Step 9: Start the Admin Panel (Optional)
+Open a new terminal:
 bash
 cd admin
 npm install
 npm run dev
 Admin panel will start at: http://localhost:5173
 
-Step 10: Access the System
+### Step 10: Access the System
 Component	URL
 Student Chat	Open frontend/index.html in any browser
 Admin Panel	http://localhost:5173
 API Docs	http://localhost:8000/docs
 📁 Project Structure
-text
+
+
+
 tuk-convosearch/
 │
 ├── app/
@@ -265,43 +271,26 @@ Content-Type: application/json
 }
 Response: Server-Sent Events stream with tokens.
 
-Admin Login
-http
-POST /api/auth/login
-Content-Type: application/json
 
-{
-  "email": "admin@tuk.ac.ke",
-  "password": "Admin2026!"
-}
-Response:
 
-json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "token_type": "bearer"
-}
+
+
 Upload Document (Admin)
-http
 POST /api/admin/documents
 Authorization: Bearer <token>
 Content-Type: multipart/form-data
 
-file: <file>
-title: "Document Title"
-View Query Logs (Admin)
-http
-GET /api/admin/logs
-Authorization: Bearer <token>
-View Statistics (Admin)
-http
-GET /api/admin/stats
-Authorization: Bearer <token>
+
+
 API Documentation
-text
+
+
 http://localhost:8000/docs
 🎯 Multi-Agent Architecture
-text
+
+
+
+
 Student Question
      │
      ▼
@@ -334,6 +323,8 @@ Student Question
      │
      ▼
 Final Answer + Source Citations
+
+
 🖥 Frontend Features
 Student Chat Interface
 Feature	Description
@@ -353,6 +344,10 @@ Document Library	View all active documents
 Remove Documents	Archive without deletion
 Query Logs	View all student queries
 Statistics	Active documents, total queries, average response time
+
+
+
+
 🧪 Testing
 Test with Swagger UI
 Open http://localhost:8000/docs
@@ -376,6 +371,10 @@ Query	Expected Behavior
 "How do I upgrade from diploma to degree?"	Retrieves from upgrade guidelines
 "Where is TU-K located?"	Retrieves from university info
 "What is the weather in Nairobi?"	Off-topic rejection
+
+
+
+
 📊 Key Metrics
 Metric	Value
 Documents Ingested	7
@@ -411,6 +410,8 @@ Add rate limiting
 
 Configure CORS appropriately
 
+
+
 🤝 Contributing
 Fork the repository
 
@@ -434,6 +435,8 @@ School of Computing and Information Technology
 
 Technical University of Kenya
 
+
+
 🙏 Acknowledgments
 Technical University of Kenya (TU-K)
 
@@ -448,9 +451,11 @@ For questions or support, please open an issue on GitHub.
 
 Built with ❤️ for TU-K students.
 
-text
 
----
+
+
+
+
 
 ## Summary
 
@@ -469,6 +474,3 @@ text
 | **Deployment** | Local and Raspberry Pi |
 | **Developer** | Your details |
 
----
-
-**Copy this into `README.md` in your TUK-ConvoSearch repository and commit it.** 🎓🚀
