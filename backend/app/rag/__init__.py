@@ -27,5 +27,5 @@ __all__ = [
     "ValidationAgent",
     "Pipeline",
 ]
-
+from app.rag.agents import RetrieverAgent
 __version__ = "0.1.0"
