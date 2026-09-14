@@ -16,8 +16,8 @@ from app.rag.core.base_agent import (
     GenerationAgent,
     ValidationAgent,
 )
-from app.rag.core.pipeline import Pipeline
-
+from app.rag.stores.base_store import BaseVectorStore
+from app.rag.stores.faiss_store import FaissStore
 __all__ = [
     "RAGContext",
     "Source",
