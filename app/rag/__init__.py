@@ -20,7 +20,7 @@ from app.rag.core.base_agent import (
 from app.rag.core.pipeline import Pipeline
 from app.rag.stores.base_store import BaseVectorStore
 from app.rag.stores.faiss_store import FaissStore
-from app.rag.agents import RetrieverAgent, RouterAgent, SynthesizerAgent
+from app.rag.agents import RetrieverAgent, RouterAgent, SynthesizerAgent, CriticAgent
 
 __all__ = [
     "RAGContext",
@@ -34,7 +34,8 @@ __all__ = [
     "FaissStore",
     "RetrieverAgent",
     "RouterAgent",
-    "SynthesizerAgent"
+    "SynthesizerAgent",
+    "CriticAgent"
 ]
 
 __version__ = "0.1.0"
