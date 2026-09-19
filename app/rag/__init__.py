@@ -21,7 +21,8 @@ from app.rag.core.pipeline import Pipeline
 from app.rag.stores.base_store import BaseVectorStore
 from app.rag.stores.faiss_store import FaissStore
 from app.rag.agents import RetrieverAgent, RouterAgent, SynthesizerAgent, CriticAgent
-
+from app.rag.stores import PubMedStore
+from app.rag.configs import build_cancer_pipeline
 __all__ = [
     "RAGContext",
     "Source",
@@ -35,7 +36,9 @@ __all__ = [
     "RetrieverAgent",
     "RouterAgent",
     "SynthesizerAgent",
-    "CriticAgent"
+    "CriticAgent",
+    "PubMedStore",
+    "build_cancer_pipeline"
 ]
 
 __version__ = "0.1.0"
