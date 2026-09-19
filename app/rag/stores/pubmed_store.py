@@ -33,8 +33,8 @@ class PubMedStore(BaseVectorStore):
     def __init__(
         self,
         persist_directory: str = "./pubmed_index",
-        embedding_model: str = "all-MiniLM-L6-v2",
-        dimension: int = 384,
+        embedding_model: str = "pritamdeka/S-PubMedBert-MS-MARCO",
+        dimension: int = 768,
         email: Optional[str] = None,
         api_key: Optional[str] = None,
     ):
