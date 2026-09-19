@@ -452,25 +452,3 @@ For questions or support, please open an issue on GitHub.
 Built with ❤️ for TU-K students.
 
 
-
-
-
-
-
-## Summary
-
-| Section | Content |
-|---------|---------|
-| **Overview** | Problem, solution, and how it works |
-| **Features** | Student and admin features |
-| **Tech Stack** | All technologies used |
-| **Installation** | Step-by-step setup |
-| **Project Structure** | Full annotated tree |
-| **API Endpoints** | All endpoints with examples |
-| **Multi-Agent Architecture** | Visual pipeline diagram |
-| **Frontend Features** | Student and admin UI |
-| **Testing** | Swagger, CLI, sample queries |
-| **Key Metrics** | Performance statistics |
-| **Deployment** | Local and Raspberry Pi |
-| **Developer** | Your details |
-
