@@ -1,18 +1,12 @@
 """
 Cancer research pipeline configuration.
 
-Assembles Router → Retriever(PubMed) → Synthesizer → Critic(llm)
-using oncology-specific keywords, a medical prompt, and a larger
-Critic model for higher grounding accuracy.
-
-This file exists to prove the modular RAG framework is domain-agnostic:
-same agents, same Pipeline, different configuration.
-
 Location: app/rag/configs/cancer_pipeline.py
 """
 
 from app.rag.core.pipeline import Pipeline
 from app.rag.agents.router_agent import RouterAgent
+from app.rag.agents.query_expansion_agent import QueryExpansionAgent
 from app.rag.agents.retriever_agent import RetrieverAgent
 from app.rag.agents.synthesizer_agent import SynthesizerAgent
 from app.rag.agents.critic_agent import CriticAgent
@@ -24,27 +18,21 @@ from app.rag.stores.pubmed_store import PubMedStore
 # ---------------------------------------------------------------------- #
 
 CANCER_KEYWORDS = [
-    # General oncology
     "cancer", "tumor", "tumour", "neoplasm", "malignancy", "oncology",
     "carcinoma", "sarcoma", "lymphoma", "leukemia", "melanoma", "glioma",
-    # Diagnosis
     "biopsy", "histology", "staging", "metastasis", "metastatic",
     "imaging", "pet-ct", "mri", "ct scan", "biomarker", "mutation",
     "genomic", "sequencing", "pathology", "cytology",
-    # Treatment
     "chemotherapy", "radiotherapy", "immunotherapy", "targeted therapy",
     "checkpoint inhibitor", "surgery", "resection", "adjuvant",
     "neoadjuvant", "palliative", "regimen", "dose",
-    # Drugs / classes
     "cisplatin", "doxorubicin", "paclitaxel", "pembrolizumab",
     "nivolumab", "trastuzumab", "bevacizumab", "tamoxifen",
     "egfr", "her2", "brca", "kras", "pdl1", "pd-l1",
-    # Outcomes
     "prognosis", "survival", "remission", "recurrence", "toxicity",
     "adverse event", "clinical trial", "efficacy",
 ]
 
-# No easter eggs — this is a research tool, not a chatbot
 CANCER_EASTER_EGGS = {}
 
 CANCER_OFF_TOPIC_MESSAGE = (
@@ -73,6 +61,19 @@ CLINICAL QUESTION: {question}
 
 EVIDENCE-BASED ANSWER (with citations):"""
 
+CANCER_QUERY_EXPANSION_PROMPT = """You rewrite clinical questions into PubMed search queries.
+
+Rules:
+- Output ONLY the search query, no explanation, no quotes
+- Use MeSH-style terms and drug/target names when applicable
+- Expand abbreviations (HER2 → "HER2" OR "ERBB2", NSCLC → "non-small cell lung cancer")
+- Keep it under 20 words
+- Separate terms with spaces (not AND/OR — PubMed default is AND)
+
+Question: {question}
+
+PubMed query:"""
+
 
 # ---------------------------------------------------------------------- #
 # Pipeline factory
@@ -80,18 +81,22 @@ EVIDENCE-BASED ANSWER (with citations):"""
 
 def build_cancer_pipeline(
     store: PubMedStore = None,
-    critic_mode: str = "llm",            # clinical claims need LLM-level grounding
+    critic_mode: str = "llm",
     synthesizer_model: str = "llama3.2:1b",
-    critic_model: str = "llama3.2:3b",   # bigger model for stricter verdicts
+    critic_model: str = "llama3.2:3b",
+    expander_model: str = "llama3.2:1b",
+    enable_expansion: bool = True,
 ) -> Pipeline:
     """
     Build the cancer research RAG pipeline.
 
     Args:
-        store:             PubMedStore (creates one if None)
-        critic_mode:       "llm" (default) or "heuristic"
-        synthesizer_model: Ollama model for answer generation
-        critic_model:      Ollama model for grounding validation
+        store:              PubMedStore (creates one if None)
+        critic_mode:        "llm" (default) or "heuristic"
+        synthesizer_model:  Ollama model for answer generation
+        critic_model:       Ollama model for grounding validation
+        expander_model:     Ollama model for query expansion
+        enable_expansion:   set False to skip query expansion entirely
 
     Returns:
         A fully assembled Pipeline ready to run or stream.
@@ -105,20 +110,31 @@ def build_cancer_pipeline(
             easter_eggs=CANCER_EASTER_EGGS,
             off_topic_message=CANCER_OFF_TOPIC_MESSAGE,
         ),
+    ]
+
+    if enable_expansion:
+        agents.append(
+            QueryExpansionAgent(
+                model_name=expander_model,
+                prompt_template=CANCER_QUERY_EXPANSION_PROMPT,
+            )
+        )
+
+    agents.extend([
         RetrieverAgent(store=store, name="PubMedRetriever"),
         SynthesizerAgent(
             model_name=synthesizer_model,
             prompt_template=CANCER_SYSTEM_PROMPT,
-            num_predict=500,             # longer answers for clinical reasoning
-            temperature=0.1,             # near-deterministic, evidence-focused
-            num_ctx=4096,                # larger window for multi-chunk context
+            num_predict=500,
+            temperature=0.1,
+            num_ctx=4096,
             keep_alive=-1,
         ),
         CriticAgent(
             mode=critic_mode,
             model_name=critic_model,
-            overlap_threshold=0.5,       # stricter when falling back to heuristic
+            overlap_threshold=0.5,
         ),
-    ]
+    ])
 
     return Pipeline(agents)

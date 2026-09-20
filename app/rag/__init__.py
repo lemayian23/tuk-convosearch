@@ -23,6 +23,7 @@ from app.rag.stores.faiss_store import FaissStore
 from app.rag.agents import RetrieverAgent, RouterAgent, SynthesizerAgent, CriticAgent
 from app.rag.stores import PubMedStore
 from app.rag.configs import build_cancer_pipeline
+from app.rag.agents.query_expansion_agent import QueryExpansionAgent
 __all__ = [
     "RAGContext",
     "Source",
@@ -38,7 +39,8 @@ __all__ = [
     "SynthesizerAgent",
     "CriticAgent",
     "PubMedStore",
-    "build_cancer_pipeline"
+    "build_cancer_pipeline",
+    "QueryExpansionAgent"
 ]
 
 __version__ = "0.1.0"
