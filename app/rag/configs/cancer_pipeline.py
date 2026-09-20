@@ -124,7 +124,7 @@ def build_cancer_pipeline(
         SynthesizerAgent(
             model_name=synthesizer_model,
             prompt_template=CANCER_SYSTEM_PROMPT,
-            num_predict=500,
+            num_predict=200,
             temperature=0.1,
             num_ctx=4096,
             keep_alive=-1,
