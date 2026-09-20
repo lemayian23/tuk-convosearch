@@ -61,18 +61,17 @@ CLINICAL QUESTION: {question}
 
 EVIDENCE-BASED ANSWER (with citations):"""
 
-CANCER_QUERY_EXPANSION_PROMPT = """You rewrite clinical questions into PubMed search queries.
+CANCER_QUERY_EXPANSION_PROMPT = """Rewrite the clinical question below into a short PubMed search query.
 
 Rules:
-- Output ONLY the search query, no explanation, no quotes
-- Use MeSH-style terms and drug/target names when applicable
-- Expand abbreviations (HER2 → "HER2" OR "ERBB2", NSCLC → "non-small cell lung cancer")
-- Keep it under 20 words
-- Separate terms with spaces (not AND/OR — PubMed default is AND)
+- Output ONLY the query keywords. No explanation. No quotes. No boolean operators.
+- Use standard medical terminology (drug names, target names, disease names).
+- Extract only concepts that appear in the question. Do NOT add related terms.
+- Keep it under 15 words.
 
 Question: {question}
 
-PubMed query:"""
+Query:"""
 
 
 # ---------------------------------------------------------------------- #
@@ -84,7 +83,7 @@ def build_cancer_pipeline(
     critic_mode: str = "llm",
     synthesizer_model: str = "llama3.2:1b",
     critic_model: str = "llama3.2:3b",
-    expander_model: str = "llama3.2:1b",
+    expander_model: str = "llama3.2:3b",
     enable_expansion: bool = True,
 ) -> Pipeline:
     """
