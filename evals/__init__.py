@@ -1,0 +1,1 @@
+"""Evaluation harness for the modular RAG framework."""

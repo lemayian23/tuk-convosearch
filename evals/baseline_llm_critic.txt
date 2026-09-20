@@ -1,0 +1,26 @@
+C:\Users\admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.3.0) or chardet (7.4.3)/charset_normalizer (3.4.4) doesn't match a supported version!
+  warnings.warn(
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\DEVELOPMENT\tuk-convosearch\evals\runner.py", line 169, in <module>
+    run_evals(critic_mode=critic_mode)
+  File "D:\DEVELOPMENT\tuk-convosearch\evals\runner.py", line 75, in run_evals
+    pipeline = build_cancer_pipeline(
+               ^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\DEVELOPMENT\tuk-convosearch\app\rag\configs\cancer_pipeline.py", line 139, in build_cancer_pipeline
+    return Pipeline(agents)
+           ^^^^^^^^^^^^^^^^
+  File "D:\DEVELOPMENT\tuk-convosearch\app\rag\core\pipeline.py", line 29, in __init__
+    print(f"\u2713 Pipeline initialized with {len(self.agents)} agents:")
+  File "C:\Users\admin\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 0: character maps to <undefined>
+================================================================================
+Running evaluation: 10 questions
+  critic_mode=llm, enable_expansion=True
+================================================================================
+  [PubMedStore] Loading embedding model...
+  [PubMedStore] Loading existing index from ./pubmed_index\faiss_index.bin
+  [PubMedStore] Loaded 444 chunks
