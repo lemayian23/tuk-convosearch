@@ -1,22 +1,18 @@
 """
 Evaluation harness for the cancer pipeline.
-
-Runs a fixed question set through the pipeline and scores:
-    - route accuracy
-    - retrieval hit rate
-    - grounded flag
-    - citation presence
-    - latency
-
-Usage:
-    python -m evals.runner
-
-Location: evals/runner.py
+...
 """
 
+import io
 import time
 import sys
 from typing import Dict, Any, List
+
+# Force UTF-8 stdout/stderr on Windows so redirected output doesn't
+# crash on ✓/✗ characters. Also silences the copy-paste mojibake.
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from app.rag import RAGContext
 from app.rag.configs.cancer_pipeline import build_cancer_pipeline

@@ -9,11 +9,10 @@ Two validation modes:
     - "heuristic": fast token-overlap check
     - "llm":       asks the LLM to judge grounding (slower, more accurate)
 
-Location: backend/app/rag/agents/critic_agent.py
+Location: app/rag/agents/critic_agent.py
 """
 
 import re
-from typing import Optional
 
 import ollama
 
@@ -140,11 +139,14 @@ class CriticAgent(ValidationAgent):
 
     def _check_llm(self, answer: str, context_str: str) -> tuple[bool, str]:
         prompt = (
-            "You are auditing a medical answer. Does the ANSWER contain any "
-            "claim that is NOT supported by the CONTEXT?\n\n"
-            "A claim is NOT supported by the if the context doesn't mention it or "
-            "contradicts it. Paraphrasing supported claims is fine.n\n"
-            "Reply with exactly one word: SUPPORTED or UNSUPORTED.\n\n"
+            "Compare the ANSWER to the CONTEXT. Decide if the ANSWER is FAITHFUL "
+            "or UNFAITHFUL.\n\n"
+            "FAITHFUL = every fact in the answer is stated in the context, "
+            "even if the wording is different.\n"
+            "UNFAITHFUL = the answer contains a fact that the context does not "
+            "state or contradicts.\n\n"
+            "Reply with exactly one word: FAITHFUL or UNFAITHFUL.\n\n"
+            f"CONTEXT:\n{context_str[:1500]}\n\n"
             f"ANSWER:\n{answer[:800]}\n\n"
             "Verdict:"
         )
@@ -152,17 +154,20 @@ class CriticAgent(ValidationAgent):
         try:
             response = ollama.chat(
                 model=self.model_name,
-                model=self.model_name,
-                messages=[{"role": "user", "context": prompt}],
-                options={"num_predict": 5, "temperature": 0.0},
+                messages=[{"role": "user", "content": prompt}],
+                options={"num_predict": 5, "temperature": 0.0},   # ← 3 → 5
                 keep_alive=-1,
             )
-            verdict = respond["message"]["context"].strip().upper()
+            verdict = response["message"]["content"].strip().upper()
         except Exception as e:
-            return True, f"LLM check failed ({e}); assuming grounded"
+            # Fail-closed: if the LLM itself errors, treat as ungrounded
+            return False, f"LLM check failed ({e}); assuming ungrounded"
 
-        if "UNSUPPPORTED" in verdict:
-            return False, "LLM verdict: UNSUPPORTED"
-        if "SUPPORTED" in verdict:
-            return True, "LLM verdict: SUPPORTED"
-        return True, f"LLM verdict unclear ({verdict!r}); assuming grounded"
+        # Check UNFAITHFUL first — the substring 'FAITHFUL' is inside it
+        if "UNFAITHFUL" in verdict or "UNFAITH" in verdict:
+            return False, "LLM verdict: UNFAITHFUL"
+        if "FAITHFUL" in verdict:
+            return True, "LLM verdict: FAITHFUL"
+
+        # Fail-closed: unparseable verdict → treat as ungrounded
+        return False, f"LLM verdict unclear ({verdict!r}); assuming ungrounded"
