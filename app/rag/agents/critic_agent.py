@@ -140,10 +140,11 @@ class CriticAgent(ValidationAgent):
 
     def _check_llm(self, answer: str, context_str: str) -> tuple[bool, str]:
         prompt = (
-            "You are a strict fact-checker. Determine if the ANSWER below is "
-            "fully supported by the CONTEXT. Reply with exactly one word: "
-            "GROUNDED or UNGROUNDED.\n\n"
-            f"CONTEXT:\n{context_str[:1500]}\n\n"
+            "You are auditing a medical answer. Does the ANSWER contain any "
+            "claim that is NOT supported by the CONTEXT?\n\n"
+            "A claim is NOT supported by the if the context doesn't mention it or "
+            "contradicts it. Paraphrasing supported claims is fine.n\n"
+            "Reply with exactly one word: SUPPORTED or UNSUPORTED.\n\n"
             f"ANSWER:\n{answer[:800]}\n\n"
             "Verdict:"
         )
@@ -151,17 +152,17 @@ class CriticAgent(ValidationAgent):
         try:
             response = ollama.chat(
                 model=self.model_name,
-                messages=[{"role": "user", "content": prompt}],
+                model=self.model_name,
+                messages=[{"role": "user", "context": prompt}],
                 options={"num_predict": 5, "temperature": 0.0},
                 keep_alive=-1,
             )
-            verdict = response["message"]["content"].strip().upper()
+            verdict = respond["message"]["context"].strip().upper()
         except Exception as e:
-            # Fail-safe: assume grounded on LLM failure to avoid infinite retries
             return True, f"LLM check failed ({e}); assuming grounded"
 
-        if "UNGROUNDED" in verdict:
-            return False, "LLM verdict: UNGROUNDED"
-        if "GROUNDED" in verdict:
-            return True, "LLM verdict: GROUNDED"
+        if "UNSUPPPORTED" in verdict:
+            return False, "LLM verdict: UNSUPPORTED"
+        if "SUPPORTED" in verdict:
+            return True, "LLM verdict: SUPPORTED"
         return True, f"LLM verdict unclear ({verdict!r}); assuming grounded"

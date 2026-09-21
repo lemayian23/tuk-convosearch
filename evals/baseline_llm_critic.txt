@@ -1,22 +1,5 @@
 C:\Users\admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.3.0) or chardet (7.4.3)/charset_normalizer (3.4.4) doesn't match a supported version!
   warnings.warn(
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "D:\DEVELOPMENT\tuk-convosearch\evals\runner.py", line 169, in <module>
-    run_evals(critic_mode=critic_mode)
-  File "D:\DEVELOPMENT\tuk-convosearch\evals\runner.py", line 75, in run_evals
-    pipeline = build_cancer_pipeline(
-               ^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\DEVELOPMENT\tuk-convosearch\app\rag\configs\cancer_pipeline.py", line 139, in build_cancer_pipeline
-    return Pipeline(agents)
-           ^^^^^^^^^^^^^^^^
-  File "D:\DEVELOPMENT\tuk-convosearch\app\rag\core\pipeline.py", line 29, in __init__
-    print(f"\u2713 Pipeline initialized with {len(self.agents)} agents:")
-  File "C:\Users\admin\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
-    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 0: character maps to <undefined>
 ================================================================================
 Running evaluation: 10 questions
   critic_mode=llm, enable_expansion=True
@@ -24,3 +7,75 @@ Running evaluation: 10 questions
   [PubMedStore] Loading embedding model...
   [PubMedStore] Loading existing index from ./pubmed_index\faiss_index.bin
   [PubMedStore] Loaded 444 chunks
+✓ Pipeline initialized with 5 agents:
+    0. Router
+    1. QueryExpander
+    2. PubMedRetriever
+    3. Synthesizer [retry-from]
+    4. Critic
+
+[1/10] What is the standard treatment for triple-negative breast cancer?
+  [PubMedStore] Found 5 chunks
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=67.8s
+
+[2/10] How does pembrolizumab work in lung cancer?
+  [PubMedStore] Found 5 chunks
+  ✓ route=internal_docs chunks=5 grounded=False cite=True t=72.7s
+
+[3/10] What is the mechanism of trastuzumab in HER2-positive breast cancer?
+  [PubMedStore] Found 5 chunks
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=64.0s
+
+[4/10] What are common BRCA1 mutations associated with?
+  [PubMedStore] Found 5 chunks
+  ✗ route=internal_docs chunks=5 grounded=True cite=True t=48.8s
+
+[5/10] What is the role of immune checkpoint inhibitors in solid tumors?
+  [PubMedStore] Found 5 chunks
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=85.3s
+
+[6/10] What are targeted therapies for non-small cell lung cancer?
+  [PubMedStore] Found 5 chunks
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=65.2s
+
+[7/10] How is colorectal cancer immunotherapy used in treatment?
+  [PubMedStore] Found 5 chunks
+  ✓ route=internal_docs chunks=5 grounded=False cite=True t=43.0s
+
+[8/10] What is the standard adjuvant therapy for early breast cancer?
+  [PubMedStore] Found 5 chunks
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=62.7s
+
+[9/10] What biomarkers predict response to immunotherapy?
+  [PubMedStore] Found 5 chunks
+  ✓ route=internal_docs chunks=5 grounded=False cite=True t=78.3s
+
+[10/10] What is the weather in Nairobi?
+  ✓ route=off_topic chunks=0 grounded=False cite=False t=0.0s
+
+================================================================================
+SUMMARY
+================================================================================
+Questions:          10
+Route accuracy:     10/10 (100%)
+Retrieval hits:     9/10 (90%)
+Grounded (critic):  6/10 (60%)
+Citation present:   9/10 (90%)
+Avg latency:        58.76s
+Total time:         587.6s
+
+By category:
+  biomarkers           1/1
+  breast               1/1
+  colorectal           1/1
+  genomics             0/1
+  her2                 1/1
+  immunotherapy        2/2
+  nsclc                1/1
+  off_topic_control    1/1
+  tnbc                 1/1
+
+Failed questions:
+  ✗ [genomics] What are common BRCA1 mutations associated with?
+      route=internal_docs, chunks=5
+      preview: Based on the context, the retrieved literature does not address this question directly.
