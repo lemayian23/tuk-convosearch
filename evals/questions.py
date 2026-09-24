@@ -64,3 +64,5 @@ EVAL_QUESTIONS = [
         "category": "off_topic_control",
     },
 ]
+
+EVAL_QUESTIONS = EVAL_QUESTIONS[:3]

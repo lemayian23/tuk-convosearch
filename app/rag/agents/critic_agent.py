@@ -146,7 +146,7 @@ class CriticAgent(ValidationAgent):
             "UNFAITHFUL = the answer contains a fact that the context does not "
             "state or contradicts.\n\n"
             "Reply with exactly one word: FAITHFUL or UNFAITHFUL.\n\n"
-            f"CONTEXT:\n{context_str[:1500]}\n\n"
+            f"CONTEXT:\n{context_str[:4000]}\n\n"
             f"ANSWER:\n{answer[:800]}\n\n"
             "Verdict:"
         )
@@ -155,7 +155,11 @@ class CriticAgent(ValidationAgent):
             response = ollama.chat(
                 model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
-                options={"num_predict": 5, "temperature": 0.0},   # ← 3 → 5
+                options={
+                    "num_predict": 5,
+                    "temperature": 0.0,
+                    "num_ctx": 4096,
+                },
                 keep_alive=-1,
             )
             verdict = response["message"]["content"].strip().upper()
