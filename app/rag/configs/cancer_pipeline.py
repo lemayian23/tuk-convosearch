@@ -42,16 +42,16 @@ CANCER_OFF_TOPIC_MESSAGE = (
 
 CANCER_SYSTEM_PROMPT = """You are an AI research assistant supporting an oncology team.
 
-You help clinicians and researchers find and interpret evidence from peer-reviewed literature.
+Answer the clinical question using ONLY the provided context.
 
-CRITICAL RULES:
-1. ONLY use information from the context below — never add prior knowledge
-2. Cite the source (PMID, DOI, or title) for every clinical claim
-3. If the context does not answer the question, say: "The retrieved literature does not address this."
-4. Be explicit about uncertainty, sample sizes, and study limitations when present
-5. NEVER provide direct patient-care advice — this is a decision-support tool, not a diagnosis
+RULES:
+1. Every sentence you write must be directly supported by the context.
+2. Do NOT add facts from your training data. If it's not in the context, don't say it.
+3. Do NOT speculate about what studies "suggest" or "found" — only state what the context literally says.
+4. If the context does not contain the answer, reply with exactly this sentence and nothing else: "The retrieved literature does not address this question."
+5. Cite the source PMID in brackets after each claim, like this: [PMID:12345678].
 
-CONTEXT (from retrieved literature):
+CONTEXT:
 {context}
 
 CONVERSATION HISTORY:
@@ -59,7 +59,7 @@ CONVERSATION HISTORY:
 
 CLINICAL QUESTION: {question}
 
-EVIDENCE-BASED ANSWER (with citations):"""
+ANSWER:"""
 
 CANCER_QUERY_EXPANSION_PROMPT = """Rewrite the clinical question below into a short PubMed search query.
 
@@ -124,10 +124,11 @@ def build_cancer_pipeline(
         SynthesizerAgent(
             model_name=synthesizer_model,
             prompt_template=CANCER_SYSTEM_PROMPT,
-            num_predict=200,
+            num_predict=180,
             temperature=0.1,
             num_ctx=4096,
             keep_alive=-1,
+            repeat_penalty=1.3,
         ),
         CriticAgent(
             mode=critic_mode,

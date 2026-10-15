@@ -40,6 +40,7 @@ class SynthesizerAgent(GenerationAgent):
         temperature: float = 0.2,
         num_ctx: int = 2048,
         keep_alive: int = -1,
+        repeat_penalty: float = 1.1,
         name: str = "Synthesizer",
     ):
         self.model_name = model_name
@@ -48,6 +49,7 @@ class SynthesizerAgent(GenerationAgent):
         self.temperature = temperature
         self.num_ctx = num_ctx
         self.keep_alive = keep_alive
+        self.repeat_penalty = repeat_penalty
         self.name = name
 
     # ------------------------------------------------------------------ #
@@ -124,6 +126,7 @@ class SynthesizerAgent(GenerationAgent):
             "num_predict": self.num_predict,
             "temperature": self.temperature,
             "num_ctx": self.num_ctx,
+            "repeat_penalty": self.repeat_penalty,
         }
 
     @staticmethod
