@@ -70,10 +70,25 @@ class CriticAgent(ValidationAgent):
             context.grounded_reason = f"route={context.route}, no validation needed"
             return context
 
-        # Skip empty/very short answers — likely "I cannot find..." refusals
+        # Refusals are grounded by definition - the model correctly stated
+        # that the context does not contain the answer.
+        refusal_phrases = [
+            "does not address this.",
+            "cannot find rhis information",
+            "not in the provided context",
+            "not available in the context",
+            "the retrieved literature does not",
+        ]
+        answer_lower = context.answer.lower()
+        if any(p in answer_lower for p in refusal_phrases):
+            context.grounded = True
+            context.grounded_reason = "answer is a refusal (correctly reported missing info)"
+            return context
+
+        # Skip very short answers
         if len(context.answer.strip()) < self.min_answer_length:
             context.grounded = True
-            context.grounded_reason = "answer too short to validate (likely refusal)"
+            context.grounded_reason = "answer too short to validate"
             return context
 
         # No context = nothing to ground against; reject if answer is long
