@@ -1,0 +1,43 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+================================================================================
+Running evaluation: 3 questions
+  critic_mode=llm, enable_expansion=True
+================================================================================
+  [PubMedStore] Loading embedding model...
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 12790.65it/s]
+  [PubMedStore] Loading existing index from ./pubmed_index\faiss_index.bin
+  [PubMedStore] Loaded 444 chunks
+✓ Pipeline initialized with 5 agents:
+    0. Router
+    1. QueryExpander
+    2. PubMedRetriever
+    3. Synthesizer [retry-from]
+    4. Critic
+
+[1/3] What is the standard treatment for triple-negative breast cancer?
+  [PubMedStore] Found 5 chunks
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=60.7s
+
+[2/3] How does pembrolizumab work in lung cancer?
+  [PubMedStore] Found 5 chunks
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=53.5s
+
+[3/3] What is the mechanism of trastuzumab in HER2-positive breast cancer?
+  [PubMedStore] Found 5 chunks
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=46.9s
+
+================================================================================
+SUMMARY
+================================================================================
+Questions:          3
+Route accuracy:     3/3 (100%)
+Retrieval hits:     3/3 (100%)
+Grounded (critic):  3/3 (100%)
+Citation present:   3/3 (100%)
+Avg latency:        53.68s
+Total time:         161.0s
+
+By category:
+  her2                 1/1
+  immunotherapy        1/1
+  tnbc                 1/1
