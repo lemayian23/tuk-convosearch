@@ -1,454 +1,356 @@
-# 🎓 TUK-ConvoSearch
+# TUK-ConvoSearch
 
-An AI-powered student assistant for **The Technical University of Kenya (TU-K)** using **Retrieval-Augmented Generation (RAG)**.
+**Build domain-specific RAG pipelines from composable agents.**
+Ships with two working examples: a cancer research literature assistant and a university Q&A system.
 
-TUK-ConvoSearch helps students access accurate, document-grounded information from official university documents — 24/7, with source citations.
-
----
-
-## 📖 Overview
-
-### The Problem
-
-Students at TU-K struggle to find accurate institutional information because it is scattered across:
-
-- The official university website (poor search relevance)
-- The student portal (limited to fee payment and e-learning)
-- Physical notice boards (outdated, require physical presence)
-- WhatsApp groups (misinformation, peer rumours)
-- Administrative offices (long queues, restricted hours)
-
-Students spend **3-4 hours per week** searching for basic information like exam dates, fee structures, and registration procedures.
-
-### The Solution
-
-**TUK-ConvoSearch** is a RAG-powered chatbot that:
-
-1. Ingests official TU-K documents (academic calendars, exam timetables, fee structures, student handbooks)
-2. Indexes them into a FAISS vector database
-3. Processes student questions using natural language
-4. Retrieves the most relevant document chunks
-5. Generates grounded answers using a local LLM (Ollama + llama3.2:1b)
-6. Provides **source citations** with every answer
-
-**No hallucination. No misinformation. Just accurate, verifiable answers.**
+[![Tests](https://github.com/lemayian23/tuk-convosearch/actions/workflows/tests.yml/badge.svg)](https://github.com/lemayian23/tuk-convosearch/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 
 ---
 
-## ✨ Features
+## Why this exists
 
-### Student Features
+Most RAG projects are one-off scripts: a retriever, an LLM call, and a prompt. They work for a demo. They break the moment you need to:
 
-| Feature | Description |
-|---------|-------------|
-| **Natural Language Q&A** | Ask questions in plain English |
-| **Source Citations** | Every answer shows which document it came from |
-| **24/7 Availability** | No office hours required |
-| **No Installation** | Open in any browser, no login required |
-| **Streaming Responses** | Word-by-word display as the answer is generated |
-| **Off-Topic Rejection** | Politely rejects non-TU-K questions |
-| **Dark Mode** | Toggle between light and dark themes |
-| **Conversation History** | Contextual follow-up questions |
+- Add a second domain (cancer research vs. student Q&A)
+- Change the retrieval backend (FAISS → PubMed → pgvector)
+- Catch and correct hallucinations
+- Measure whether a change actually improved anything
 
-### Admin Features
+TUK-ConvoSearch is what you get when you take a working RAG pipeline and ask: **"what would this look like if it had to support a second domain without rewriting everything?"**
 
-| Feature | Description |
-|---------|-------------|
-| **JWT Authentication** | Secure admin login |
-| **Document Upload** | PDF, DOCX, TXT support |
-| **Automatic Re-indexing** | FAISS index updates automatically |
-| **Document Removal** | Archive documents without permanent deletion |
-| **Query Logs** | View all student queries with responses |
-| **System Statistics** | Active documents, total queries, average response time |
+The answer is a small framework of composable agents, swappable stores, and domain-specific pipeline configs.
 
 ---
 
-## 🛠 Tech Stack
+## Architecture
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **Backend** | Python 3.12, FastAPI | API server and orchestration |
-| **Student Frontend** | Vanilla HTML/CSS/JS | Chat interface (no build tools) |
-| **Admin Frontend** | React + Vite | Document management panel |
-| **Vector Database** | FAISS (IndexFlatL2) | Fast semantic similarity search |
-| **Embeddings** | all-MiniLM-L6-v2 | 384-dimensional text embeddings |
-| **LLM** | Ollama + llama3.2:1b | Local answer generation |
-| **Database** | SQLite | Query logs and document metadata |
-| **Authentication** | JWT + bcrypt | Secure admin access |
-| **Streaming** | Server-Sent Events (SSE) | Word-by-word response delivery |
+Every question flows through a **Pipeline** of **Agents**. Each agent has one job. Each can be swapped, tested, or extended without touching the others.
+
+
+Question
+│
+▼
+┌─────────────────────────────────────────────────────────────┐
+│ RouterAgent │
+│ Classifies: in-domain / off-topic / small-talk │
+└─────────────────────────────────────────────────────────────┘
+│
+▼
+┌─────────────────────────────────────────────────────────────┐
+│ QueryExpansionAgent (optional, per-pipeline) │
+│ Rewrites user question into domain-optimized search query │
+└─────────────────────────────────────────────────────────────┘
+│
+▼
+┌─────────────────────────────────────────────────────────────┐
+│ RetrieverAgent │
+│ Searches any BaseVectorStore for the top-k chunks │
+└─────────────────────────────────────────────────────────────┘
+│
+▼
+┌─────────────────────────────────────────────────────────────┐
+│ SynthesizerAgent │
+│ Generates a cited answer constrained to retrieved context │
+└─────────────────────────────────────────────────────────────┘
+│
+▼
+┌─────────────────────────────────────────────────────────────┐
+│ CriticAgent │
+│ Validates grounding. Requests retry if ungrounded. │
+└─────────────────────────────────────────────────────────────┘
+│
+▼
+Answer + Sources
+
+text
+
+**Design principles:**
+
+- **Single responsibility** — each agent does one thing
+- **Swappable** — replace any agent or store without touching the pipeline
+- **Testable** — 26 unit tests, all isolated (no LLM calls, no I/O)
+- **Measurable** — an eval harness with a fixed question set and per-question scoring
 
 ---
 
-## 📋 Prerequisites
+## Two working examples
 
-- **Python** 3.10+
-- **Ollama** 0.19+ (with llama3.2:1b model pulled)
-- **Node.js** 18+ (for admin panel only)
-- **Git** (for cloning the repository)
+The framework ships with two domain pipelines. Same agents. Same pipeline class. Different config.
+
+### 1. Cancer research literature assistant
+
+- **Source:** PubMed abstracts, fetched live via NCBI E-utilities
+- **Embeddings:** `pritamdeka/S-PubMedBert-MS-MARCO` (biomedical)
+- **Query expansion:** LLM rewrites clinical questions into MeSH-style queries
+- **Critic:** LLM-based faithfulness check with citation enforcement
+- **Refusal handling:** Deterministically detects and accepts "no literature" answers
+
+**Eval results** (10 fixed questions):
+
+| Metric | Score |
+|--------|-------|
+| Route accuracy | 10/10 (100%) |
+| Retrieval hits | 9/10 (90%) |
+| Grounded answers | 9/10 (90%) |
+| Citation present | 9/10 (90%) |
+| Average latency | 37s per question |
+
+The one failing question (BRCA1) is a known corpus gap, not a pipeline failure. The system correctly refuses to answer it.
+
+### 2. University Q&A assistant (TU-K)
+
+- **Source:** Official TU-K documents (PDFs, DOCX, TXT)
+- **Embeddings:** `all-MiniLM-L6-v2` (general purpose)
+- **Query expansion:** None — the corpus uses plain English
+- **Critic:** Heuristic token overlap (fast, no LLM call)
+- **Easter eggs:** Handles "tell me a joke" without invoking the pipeline
+
+Both pipelines use the same four core agents. The differences are entirely in configuration.
 
 ---
 
-## 🚀 Installation
+## Quickstart
 
-### Step 1: Clone the Repository
+**Prerequisites:** Python 3.10+, [Ollama](https://ollama.com) installed.
 
 ```bash
 git clone https://github.com/lemayian23/tuk-convosearch.git
 cd tuk-convosearch
 
-### Step 2: Create Virtual Environment
-bash
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate    # Linux/Mac
-### Step 3: Install Dependencies
-bash
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # Linux / macOS
+
 pip install -r requirements.txt
-Step 4: Install Ollama and Pull Model
-bash
-###Step 4: Download Ollama from https://ollama.com/download
+
+# Pull the models
 ollama pull llama3.2:1b
+ollama pull llama3.2:3b
 
+# Run the tests
+python -m pytest
+Try the cancer pipeline
+python
+from app.rag.configs.cancer_pipeline import build_cancer_pipeline
+from app.rag import RAGContext
 
-### Step 5: Configure Environment
-bash
-copy .env.example .env
-notepad .env
-Edit .env with your settings:
+pipeline = build_cancer_pipeline()
+ctx = RAGContext(
+    question="What is the mechanism of trastuzumab in HER2-positive breast cancer?",
+    session_id="demo",
+)
+ctx = pipeline.run(ctx)
 
-env
-EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
-FAISS_INDEX_PATH=./faiss_index/faiss_index.bin
-METADATA_PATH=./faiss_index/metadata.pkl
-OLLAMA_MODEL=llama3.2:1b
-LOG_LEVEL=INFO
-DATABASE_URL=sqlite:///./data/tuk_convosearch.db
-CHUNK_SIZE=500
-CHUNK_OVERLAP=100
-TOP_K=5
-SIMILARITY_THRESHOLD=0.5
-MAX_CRITIC_RETRIES=2
-JWT_SECRET_KEY=your_secret_key_here
+print(ctx.answer)
+for source in ctx.sources:
+    print(f"  - {source.source}")
+Output:
 
+text
+The mechanism of trastuzumab involves binding to the extracellular
+domain of the HER2 protein, inhibiting downstream signaling pathways...
 
-###Step 6: Add Documents to Knowledge Base
-Place official TU-K documents in the docs/ folder:
-docs/
-├── e-Booklet March 2026.pdf
-├── SEMESTER TWO MAY 2026 EXAMINATION TIMETABLE.pdf
-├── SATUK-DELEGATES-25-3-26.pdf
-├── university_info.txt
-└── Upgrade-From-Diploma-to-Degree-at-TU-K-2026.pdf
-Supported formats: PDF, DOCX, TXT
+  - PMID:39821040 — HER2-Positive Breast Cancer Treatment and Resistance
+  - PMID:32721042 — Novel HER2-targeted therapies for HER2-positive...
+  - PMID:32896428 — Systemic therapy for metastatic HER2-positive...
+Try the TU-K pipeline
+python
+from app.rag.configs.tuk_pipeline import build_tuk_pipeline
+from app.rag import RAGContext
 
-
-
-
-Step 7: Build the FAISS Index
-bash
-python rebuild_faiss.py
-Expected output:
-Loading documents from ./docs/...
-Loaded 7 documents
-Created 66 chunks
-Embeddings generated
-FAISS index saved to ./faiss_index/faiss_index.bin
-Database records created: 7 documents
-Step 8: Start the Backend Server
-bash
-python -m uvicorn app.main:app --reload
-Server will start at: http://localhost:8000
-
-
-
-### Step 9: Start the Admin Panel (Optional)
-Open a new terminal:
-bash
-cd admin
-npm install
-npm run dev
-Admin panel will start at: http://localhost:5173
-
-### Step 10: Access the System
-Component	URL
-Student Chat	Open frontend/index.html in any browser
-Admin Panel	http://localhost:5173
-API Docs	http://localhost:8000/docs
-📁 Project Structure
-
-
-
+pipeline = build_tuk_pipeline()
+ctx = RAGContext(question="When do the second semester exams start?", session_id="demo")
+ctx = pipeline.run(ctx)
+print(ctx.answer)
+Project structure
+text
 tuk-convosearch/
-│
 ├── app/
-│   ├── main.py                      # FastAPI entrypoint
-│   ├── api/
-│   │   ├── chat_proposal.py         # Student chat endpoints (SSE streaming)
-│   │   └── admin.py                 # Protected admin endpoints
-│   │
+│   ├── api/                              # FastAPI endpoints
+│   │   └── chat_proposal.py              # Chat + SSE streaming
 │   ├── services/
-│   │   ├── auth.py                  # JWT authentication
-│   │   ├── database.py              # SQLite connection manager
-│   │   ├── rag_service_proposal.py  # RAG pipeline orchestration
-│   │   ├── faiss_vector_store.py    # FAISS index management
-│   │   ├── document_loader.py       # PDF/DOCX/TXT loading
-│   │   └── chunking.py              # Paragraph-aware text chunking
-│   │
-│   └── utils/
-│       ├── prompts.py               # Router, Synthesizer, Critic prompts
-│       └── logger.py                # Logging setup
+│   │   ├── rag_service_proposal.py       # Service layer (delegates to pipeline)
+│   │   └── database.py                   # SQLite query logging
+│   └── rag/                              # ← the framework
+│       ├── core/
+│       │   ├── base_agent.py             # Agent interface
+│       │   ├── context.py                # RAGContext (shared state)
+│       │   └── pipeline.py               # Orchestrator (retries, short-circuit)
+│       ├── agents/
+│       │   ├── router_agent.py
+│       │   ├── query_expansion_agent.py
+│       │   ├── retriever_agent.py
+│       │   ├── synthesizer_agent.py
+│       │   └── critic_agent.py
+│       ├── stores/
+│       │   ├── base_store.py             # VectorStore interface
+│       │   ├── faiss_store.py            # Local FAISS implementation
+│       │   └── pubmed_store.py           # NCBI E-utilities + FAISS
+│       └── configs/
+│           ├── tuk_pipeline.py           # University Q&A config
+│           └── cancer_pipeline.py        # Cancer research config
 │
-├── admin/                           # React admin panel
-│   ├── src/
-│   │   └── App.jsx                  # Login, documents, logs, stats
-│   └── package.json
+├── evals/                                # Evaluation harness
+│   ├── questions.py                      # Fixed question set
+│   └── runner.py                         # Scoring + reporting
 │
-├── frontend/
-│   └── index.html                   # Student chat interface
-│
-├── docs/                            # Knowledge base (TU-K documents)
-│   ├── e-Booklet March 2026.pdf
-│   ├── SEMESTER TWO MAY 2026 EXAMINATION TIMETABLE.pdf
-│   └── ...
-│
-├── docs_archive/                    # Archived documents (soft-deleted)
-│
-├── faiss_index/
-│   ├── faiss_index.bin              # FAISS vector index
-│   └── metadata.pkl                 # Chunk text and source metadata
-│
-├── data/
-│   └── tuk_convosearch.db           # SQLite database
-│
-├── rebuild_faiss.py                 # Document ingestion script
-├── requirements.txt
-├── .env.example
-├── .gitignore
-└── README.md
-🔌 API Endpoints
-Health Check
-http
-GET /health
-Response:
+├── tests/                                # Unit tests (pytest)
+├── docs/                                 # TU-K knowledge base
+├── pubmed_index/                         # Cancer corpus (FAISS)
+├── faiss_index/                          # TU-K corpus (FAISS)
+└── pytest.ini
+Extending the framework
+The whole point of this project is that adding a new domain is one config file, not a rewrite.
 
-json
-{
-  "status": "ok",
-  "vector_count": 66,
-  "model_loaded": true,
-  "version": "1.0.0"
-}
-Ask a Question
-http
-POST /api/chat
-Content-Type: application/json
+Example: adding a legal research pipeline
+python
+# app/rag/configs/legal_pipeline.py
 
-{
-  "question": "When do the second semester exams start?"
-}
-Response:
+from app.rag.core.pipeline import Pipeline
+from app.rag.agents import RouterAgent, RetrieverAgent, SynthesizerAgent, CriticAgent
+from app.rag.stores.faiss_store import FaissStore
 
-json
-{
-  "answer": "The second semester examination period begins on 15th May 2026...",
-  "sources": [
-    {
-      "source": "SEMESTER TWO MAY 2026 EXAMINATION TIMETABLE.pdf",
-      "text": "Examinations for the second semester will commence on 15th May 2026..."
-    }
-  ],
-  "grounded": true,
-  "route_used": "internal_docs"
-}
-Streaming Chat (SSE)
-http
-POST /api/chat/stream
-Content-Type: application/json
+LEGAL_KEYWORDS = ["contract", "statute", "precedent", "plaintiff", "jurisdiction", ...]
 
-{
-  "question": "When do the second semester exams start?",
-  "session_id": "abc123"
-}
-Response: Server-Sent Events stream with tokens.
+LEGAL_PROMPT = """You are a legal research assistant...
 
+RULES:
+1. Cite the case or statute after every claim
+2. If the context does not contain the answer, say: "..."
+"""
 
+def build_legal_pipeline(store=None):
+    if store is None:
+        store = FaissStore(persist_directory="./legal_index")
 
+    return Pipeline([
+        RouterAgent(domain_keywords=LEGAL_KEYWORDS, ...),
+        RetrieverAgent(store=store),
+        SynthesizerAgent(prompt_template=LEGAL_PROMPT, ...),
+        CriticAgent(mode="llm", ...),
+    ])
+Three things need to change:
 
+Domain keywords for the router
 
-Upload Document (Admin)
-POST /api/admin/documents
-Authorization: Bearer <token>
-Content-Type: multipart/form-data
+System prompt for the synthesizer
 
+Vector store for the corpus
 
+Everything else — the pipeline, the retries, the critic logic, the short-circuit behavior — stays identical.
 
-API Documentation
+Available extension points
+Component	What you can swap	Where to plug in
+Vector store	FAISS, PubMed, Chroma, pgvector	Subclass BaseVectorStore
+Router logic	Keyword, LLM, hybrid	Subclass Agent
+Query expansion	LLM, MeSH dictionary, none	Add a QueryExpansionAgent or skip
+Synthesizer	Ollama, OpenAI, Anthropic	Pass a different model_name or agent
+Critic	Heuristic, LLM, hybrid	Swap mode or subclass ValidationAgent
+Testing
+Unit tests (fast, no I/O):
 
-
-http://localhost:8000/docs
-🎯 Multi-Agent Architecture
-
-
-
-
-Student Question
-     │
-     ▼
-┌─────────────────────────────────────────────────────────────┐
-│  ROUTER AGENT                                               │
-│  Decides: internal_docs / web_search / both                 │
-│  Uses keyword matching for off-topic detection              │
-└─────────────────────────────────────────────────────────────┘
-     │
-     ▼
-┌─────────────────────────────────────────────────────────────┐
-│  RETRIEVER AGENT                                            │
-│  Searches FAISS vector store for relevant document chunks   │
-│  Returns top-5 chunks by similarity score                   │
-└─────────────────────────────────────────────────────────────┘
-     │
-     ▼
-┌─────────────────────────────────────────────────────────────┐
-│  SYNTHESIZER AGENT                                          │
-│  Generates answer using Ollama (llama3.2:1b)                │
-│  Constrained to retrieved context only                      │
-└─────────────────────────────────────────────────────────────┘
-     │
-     ▼
-┌─────────────────────────────────────────────────────────────┐
-│  CRITIC AGENT                                               │
-│  Validates answer is grounded in retrieved context          │
-│  If not grounded → triggers retry                           │
-└─────────────────────────────────────────────────────────────┘
-     │
-     ▼
-Final Answer + Source Citations
-
-
-🖥 Frontend Features
-Student Chat Interface
-Feature	Description
-Chat UI	DeepSeek-style dark theme
-Message Bubbles	User (right) and Assistant (left)
-Streaming	Word-by-word response display
-Source Panel	Expandable citations
-Grounded Badge	✅ Grounded or ⚠️ Not Grounded
-Dark Mode Toggle	Switch between light and dark
-Suggestion Chips	Common questions for quick access
-No Login Required	Open in any browser
-Admin Panel
-Feature	Description
-Secure Login	JWT authentication
-Document Upload	PDF, DOCX, TXT support
-Document Library	View all active documents
-Remove Documents	Archive without deletion
-Query Logs	View all student queries
-Statistics	Active documents, total queries, average response time
-
-
-
-
-🧪 Testing
-Test with Swagger UI
-Open http://localhost:8000/docs
-
-Click POST /api/chat
-
-Click "Try it out"
-
-Enter:
-
-json
-{"question": "When do the second semester exams start?"}
-Click "Execute"
-
-Test with CLI
 bash
-python scripts/test_query.py
-Sample Queries
-Query	Expected Behavior
-"When do exams start?"	Retrieves from examination timetable
-"How do I upgrade from diploma to degree?"	Retrieves from upgrade guidelines
-"Where is TU-K located?"	Retrieves from university info
-"What is the weather in Nairobi?"	Off-topic rejection
+python -m pytest
+Evaluation harness (slow, runs full pipelines):
 
+bash
+python -m evals.runner > evals/baseline.txt
+The harness measures per-question:
 
+Route accuracy — did the router classify correctly?
 
+Retrieval hit — did the top-k chunks contain the expected keywords?
 
-📊 Key Metrics
-Metric	Value
-Documents Ingested	7
-Text Chunks	66
-Embedding Dimension	384
-Average Response Time	18.65 seconds
-Cache Hit Response Time	Under 1 second
-Citation Rate	100%
-Test Cases Passed	20/20
-Student Satisfaction	11/12 easy to use
-Preference over Office	10/12 students
-🚢 Deployment
-Local Deployment
-Runs on any machine with Python 3.10+ and Ollama.
+Grounded — did the critic accept the answer?
 
-Raspberry Pi 5 Deployment
-RAM: 8GB recommended
+Citation present — did the synthesizer cite sources?
 
-Storage: 64GB+ microSD (A2 class) or NVMe SSD
+Latency — how long did the full pipeline take?
 
-OS: Raspberry Pi OS (64-bit) Bookworm
+Numbers are committed to evals/ after each significant change, so you can diff improvements.
 
-Power: Official 27W USB-C power supply
+Roadmap
+What's done, what's next, what's not planned.
 
-Production Considerations
-Add HTTPS with a reverse proxy (Nginx/Caddy)
+✅ Done
+Modular agent pipeline with retries and short-circuit routing
 
-Use PostgreSQL instead of SQLite
+Two working domain pipelines (cancer research, TU-K)
 
-Set up monitoring and logging
+26 unit tests, all isolated from LLMs and I/O
 
-Add rate limiting
+Evaluation harness with real numbers
 
-Configure CORS appropriately
+Live PubMed ingestion via NCBI E-utilities
 
+Citation enforcement in the synthesizer
 
+Deterministic refusal handling in the critic
 
-🤝 Contributing
-Fork the repository
+🚧 Next
+GitHub Actions CI on all supported Python versions
 
-Create a feature branch
+Published PyPI package (pip install tuk-convosearch)
 
-Commit your changes
+Docker image for one-command deployment
 
-Push to the branch
+Documentation site (MkDocs or Docusaurus)
 
-Open a Pull Request
+Additional store backends (Chroma, pgvector)
 
-📄 License
-This project is licensed under the MIT License.
+Streaming support for the critic stage
 
-👨‍💻 Developer
+❌ Not planned
+A hosted SaaS version
+
+Clinical decision support (this is a research tool, not a medical device)
+
+Multi-tenant authentication
+
+Fine-tuning custom models
+
+If you want any of the "not planned" items, fork the project — the architecture supports all of them.
+
+Contributing
+Contributions are welcome. The best place to start:
+
+good first issue labels on GitHub
+
+Add a new pipeline config — pick a domain you know, follow the cancer pipeline as a template
+
+Write an eval question set for an existing domain
+
+Improve the docs — especially the extension guide
+
+Before opening a PR:
+
+bash
+python -m pytest              # all tests must pass
+python -m evals.runner        # baseline must not regress
+If you're adding a new agent or store, include tests. If you're adding a pipeline config, include a couple of eval questions.
+
+For larger changes, open an issue first to discuss the approach.
+
+Citation
+If you use this framework in academic work:
+
+bibtex
+@software{tuk_convosearch_2026,
+  author = {Kirionki, Denis Lemayian},
+  title = {TUK-ConvoSearch: A Modular RAG Framework for High-Stakes Domains},
+  year = {2026},
+  url = {https://github.com/lemayian23/tuk-convosearch}
+}
+License
+MIT — see LICENSE.
+
+Author
 Denis Lemayian Kirionki
-
-0799801096
-
 School of Computing and Information Technology
-
 Technical University of Kenya
 
+Built with support from the TU-K School of Computing and Information Technology. Supervised by Mr. Shadrack Ngumbau and Mr. Dalmas Owira.
 
-
-🙏 Acknowledgments
-Technical University of Kenya (TU-K)
-
-School of Computing and Information Technology
-
-Supervisors: Mr. Shadrack Ngumbau and Mr. Dalmas Owira
-
-Open-source community (FAISS, Hugging Face, Ollama, FastAPI)
-
-📞 Contact
-For questions or support, please open an issue on GitHub.
-
-Built with ❤️ for TU-K students.
-
-
+Open an issue for questions, bugs, or feature requests.
