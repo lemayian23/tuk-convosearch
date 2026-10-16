@@ -14,13 +14,10 @@ Location: app/rag/agents/critic_agent.py
 
 import re
 
-import ollama
-
 from app.rag.core.base_agent import ValidationAgent
 from app.rag.core.context import RAGContext
 
 
-# Common English stopwords — ignored in token-overlap scoring
 STOPWORDS = {
     "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has",
     "have", "he", "in", "is", "it", "its", "of", "on", "or", "that", "the",
@@ -31,18 +28,6 @@ STOPWORDS = {
 
 
 class CriticAgent(ValidationAgent):
-    """
-    Validates that the answer is grounded in the retrieved context.
-
-    Args:
-        mode: "heuristic" or "llm"
-        overlap_threshold: min fraction of answer tokens found in context
-                           (only used in heuristic mode)
-        model_name: Ollama model for llm mode
-        min_answer_length: answers shorter than this bypass validation
-                           (prevents retrying on "I cannot find..." replies)
-    """
-
     def __init__(
         self,
         mode: str = "heuristic",
@@ -64,17 +49,16 @@ class CriticAgent(ValidationAgent):
     # ------------------------------------------------------------------ #
 
     def run(self, context: RAGContext) -> RAGContext:
-        # Skip if router already answered (small_talk / off_topic)
         if context.route in ("small_talk", "off_topic"):
             context.grounded = True
             context.grounded_reason = f"route={context.route}, no validation needed"
             return context
 
-        # Refusals are grounded by definition - the model correctly stated
-        # that the context does not contain the answer.
+        # Refusals are grounded by definition — the model correctly stated
+        # that the context doesn't contain the answer.
         refusal_phrases = [
-            "does not address this.",
-            "cannot find rhis information",
+            "does not address this",
+            "cannot find this information",
             "not in the provided context",
             "not available in the context",
             "the retrieved literature does not",
@@ -85,13 +69,11 @@ class CriticAgent(ValidationAgent):
             context.grounded_reason = "answer is a refusal (correctly reported missing info)"
             return context
 
-        # Skip very short answers
         if len(context.answer.strip()) < self.min_answer_length:
             context.grounded = True
-            context.grounded_reason = "answer too short to validate"
+            context.grounded_reason = "answer too short to validate (likely refusal)"
             return context
 
-        # No context = nothing to ground against; reject if answer is long
         context_str = context.metadata.get("context_string", "")
         if not context_str.strip():
             context.grounded = False
@@ -117,7 +99,6 @@ class CriticAgent(ValidationAgent):
     # ------------------------------------------------------------------ #
 
     def _maybe_request_retry(self, context: RAGContext, reason: str = "") -> None:
-        """Request a retry if we have attempts left."""
         if context.retry_count < context.max_retries:
             context.request_retry(reason or "answer not grounded in context")
 
@@ -153,15 +134,15 @@ class CriticAgent(ValidationAgent):
     # ------------------------------------------------------------------ #
 
     def _check_llm(self, answer: str, context_str: str) -> tuple[bool, str]:
+        import ollama  # lazy import — only needed in llm mode
+
         prompt = (
             "Compare the ANSWER to the CONTEXT. Decide if the ANSWER is FAITHFUL "
             "or UNFAITHFUL.\n\n"
-            "FAITHFUL = EVERY factual claim in the answer can be found in the context, "
-            "even if paraphrased.\n"
-            "UNFAITHFUL = the answer contains AT LEAST ONE factual claim that is NOT "
-            "in the context, or that contradicts it.\n\n"
-            "Check each sentence of the answer against the context. If any single "
-            "claim is not supported, the whole answer is UNFAITHFUL.\n\n"
+            "FAITHFUL = every fact in the answer is stated in the context, "
+            "even if the wording is different.\n"
+            "UNFAITHFUL = the answer contains a fact that the context does not "
+            "state or contradicts.\n\n"
             "Reply with exactly one word: FAITHFUL or UNFAITHFUL.\n\n"
             f"CONTEXT:\n{context_str[:4000]}\n\n"
             f"ANSWER:\n{answer[:800]}\n\n"
@@ -172,23 +153,16 @@ class CriticAgent(ValidationAgent):
             response = ollama.chat(
                 model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
-                options={
-                    "num_predict": 5,
-                    "temperature": 0.0,
-                    "num_ctx": 4096,
-                },
+                options={"num_predict": 5, "temperature": 0.0, "num_ctx": 4096},
                 keep_alive=-1,
             )
             verdict = response["message"]["content"].strip().upper()
         except Exception as e:
-            # Fail-closed: if the LLM itself errors, treat as ungrounded
             return False, f"LLM check failed ({e}); assuming ungrounded"
 
-        # Check UNFAITHFUL first — the substring 'FAITHFUL' is inside it
         if "UNFAITHFUL" in verdict or "UNFAITH" in verdict:
             return False, "LLM verdict: UNFAITHFUL"
         if "FAITHFUL" in verdict:
             return True, "LLM verdict: FAITHFUL"
 
-        # Fail-closed: unparseable verdict → treat as ungrounded
         return False, f"LLM verdict unclear ({verdict!r}); assuming ungrounded"

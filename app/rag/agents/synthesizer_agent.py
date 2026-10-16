@@ -8,12 +8,10 @@ Writes: context.answer, context.answer_tokens
 Supports both blocking (run) and streaming (stream) execution.
 Streaming yields {'type': 'token', 'content': ...} events.
 
-Location: backend/app/rag/agents/synthesizer_agent.py
+Location: app/rag/agents/synthesizer_agent.py
 """
 
 from typing import Generator, Dict, Any, Optional
-
-import ollama
 
 from app.rag.core.base_agent import GenerationAgent
 from app.rag.core.context import RAGContext
@@ -30,6 +28,7 @@ class SynthesizerAgent(GenerationAgent):
         temperature:     sampling temperature (0.0 = deterministic)
         num_ctx:         context window size
         keep_alive:      Ollama keep_alive (e.g. -1 to keep model resident)
+        repeat_penalty:  discourage repetition (small models need this)
     """
 
     def __init__(
@@ -61,6 +60,8 @@ class SynthesizerAgent(GenerationAgent):
         if context.answer:
             return context
 
+        import ollama  # lazy import — only needed when actually generating
+
         prompt = self._build_prompt(context)
         try:
             response = ollama.chat(
@@ -86,6 +87,8 @@ class SynthesizerAgent(GenerationAgent):
         if context.answer:
             yield {"type": "token", "content": context.answer}
             return
+
+        import ollama  # lazy import
 
         prompt = self._build_prompt(context)
 

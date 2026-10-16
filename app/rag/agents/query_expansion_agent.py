@@ -11,24 +11,11 @@ Location: app/rag/agents/query_expansion_agent.py
 
 from typing import Optional
 
-import ollama
-
 from app.rag.core.base_agent import Agent
 from app.rag.core.context import RAGContext
 
 
 class QueryExpansionAgent(Agent):
-    """
-    Rewrites the user question into a better retrieval query.
-
-    Args:
-        model_name:      Ollama model to use for rewriting
-        prompt_template: instructions with {question} placeholder
-        max_tokens:      cap the expansion length
-        temperature:     keep low — we want deterministic output
-        name:            agent name (shows up in pipeline describe())
-    """
-
     def __init__(
         self,
         model_name: str = "llama3.2:1b",
@@ -44,9 +31,10 @@ class QueryExpansionAgent(Agent):
         self.name = name
 
     def run(self, context: RAGContext) -> RAGContext:
-        # Skip if router short-circuited
         if context.route in ("small_talk", "off_topic"):
             return context
+
+        import ollama  # lazy import
 
         try:
             response = ollama.chat(
@@ -64,7 +52,6 @@ class QueryExpansionAgent(Agent):
             )
             expanded = response["message"]["content"].strip()
 
-            # Sanity: must be non-empty and reasonably short
             if expanded and len(expanded) < 300:
                 context.retrieval_query = expanded
                 context.metadata["original_question"] = context.question
@@ -74,7 +61,6 @@ class QueryExpansionAgent(Agent):
                 context.metadata["expansion_skipped"] = "empty or too long"
 
         except Exception as e:
-            # Never fail hard — fall back to the original question
             print(f"  [QueryExpansion] Failed ({e}), using original question")
             context.retrieval_query = context.question
             context.metadata["expansion_error"] = str(e)
@@ -83,7 +69,6 @@ class QueryExpansionAgent(Agent):
 
     @staticmethod
     def _default_prompt() -> str:
-        """Generic prompt. Pipelines should override with domain version."""
         return (
             "Rewrite the following question into a short, keyword-rich "
             "search query. Output ONLY the query, no explanation, no quotes.\n\n"
