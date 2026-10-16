@@ -52,3 +52,7 @@ frontend/.next/
 # Temporary files
 *.tmp
 temp/
+
+dist/
+build/
+*.egg-info/
