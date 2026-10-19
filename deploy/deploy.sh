@@ -131,6 +131,16 @@ if [[ "$OLLAMA_HOST" == "http://localhost:11434" || "$OLLAMA_HOST" == "http://12
 	die "TUK_OLLAMA_HOST points at localhost, which inside the app container is the app itself. In compose it must be: http://ollama:11434"
 fi
 
+# Caddyfile has a site block per name. Two blocks with the same name adapt
+# cleanly (so `caddy validate` passes) and then make the process exit 1 during
+# startup WITHOUT logging a single error line: `docker compose ps` shows caddy
+# restarting forever while /api/health still answers from inside the network.
+WWW_ADDRESS="$(get_env WWW_ADDRESS)"
+[[ -n "$WWW_ADDRESS" ]] || WWW_ADDRESS="www.lemayian.com"
+if [[ "$WWW_ADDRESS" == "$SITE_ADDRESS" ]]; then
+	die "SITE_ADDRESS and WWW_ADDRESS are both '$SITE_ADDRESS'. Caddy refuses two site blocks for one name and dies silently. Point WWW_ADDRESS at a different hostname, or comment out its block in deploy/Caddyfile."
+fi
+
 # The two bind-mounted directories must exist AND be writable by the app's
 # non-root uid (10001, created in deploy/Dockerfile). Compose would otherwise
 # have Docker create them owned by root and the app fails on first write with a
