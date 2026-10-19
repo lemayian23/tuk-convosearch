@@ -1,0 +1,18 @@
+# Runtime dependencies for the TUK-ConvoSearch server.
+# Range pins rather than exact pins: the container build writes
+# requirements.lock from `pip freeze`, and that lock is what ships.
+fastapi>=0.115,<0.130
+uvicorn[standard]>=0.30,<0.40
+pydantic>=2.8,<3
+pydantic-settings>=2.4,<3
+python-multipart>=0.0.9,<0.1
+requests>=2.31,<3
+PyJWT>=2.8,<3
+bcrypt>=4.1,<6
+numpy>=1.26,<3
+faiss-cpu>=1.8,<2
+sentence-transformers>=3.0,<5
+ollama>=0.3,<0.5
+pdfplumber>=0.11,<0.12
+pypdf>=4.2,<7
+python-docx>=1.1,<2
