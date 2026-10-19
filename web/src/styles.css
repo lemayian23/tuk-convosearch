@@ -1,0 +1,557 @@
+/*
+ * TUK-ConvoSearch student UI.
+ *
+ * Two constraints shape everything here: most students arrive on a phone
+ * over metered mobile data, and the answer takes seconds to generate. So:
+ * no web fonts, no icon library, no images beyond a 600-byte favicon, and a
+ * layout whose only job is to keep a long answer readable while it appears.
+ *
+ * Location: web/src/styles.css
+ */
+
+:root {
+  --ink: #12241d;
+  --ink-soft: #4a5d55;
+  --paper: #f7f4ee;
+  --surface: #ffffff;
+  --green: #0f3d2e;
+  --green-tint: #e6efe9;
+  --gold: #b8860b;
+  --gold-bright: #f2b33d;
+  --rule: #ddd6ca;
+  --danger: #9b2c2c;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(18, 36, 29, 0.06), 0 8px 24px rgba(18, 36, 29, 0.06);
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #eaf1ec;
+    --ink-soft: #a9b8b0;
+    --paper: #101513;
+    --surface: #182018;
+    --green: #1b5b42;
+    --green-tint: #1e2c25;
+    --gold: #e9b949;
+    --gold-bright: #f2b33d;
+    --rule: #2c3831;
+    --danger: #f0a3a3;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 74rem;
+  margin: 0 auto;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+/* ------------------------------------------------------------------ * Header * ------------------------------------------------------------------ */
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--rule);
+  background: var(--green);
+  color: #f6faf7;
+}
+
+.masthead .mark {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.masthead .mark small {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+}
+
+.masthead .spacer {
+  flex: 1;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.icon-button:hover,
+.icon-button:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ * Layout * ------------------------------------------------------------------ */
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.thread {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1rem 0.5rem;
+  scroll-behavior: smooth;
+}
+
+.stream {
+  max-width: 68ch;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+/* ------------------------------------------------------------------ * Empty state * ------------------------------------------------------------------ */
+.intro {
+  padding: 1rem 0 0.5rem;
+}
+
+.intro h1 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 5vw, 2.1rem);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.intro p {
+  margin: 0 0 1.1rem;
+  color: var(--ink-soft);
+  max-width: 54ch;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  padding: 0.6rem 0.85rem;
+  min-height: 44px;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--radius);
+  background: var(--green-tint);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chip:hover,
+.chip:focus-visible {
+  border-color: var(--gold);
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------ * Messages * ------------------------------------------------------------------ */
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.turn.user {
+  align-items: flex-end;
+}
+
+.bubble {
+  padding: 0.75rem 0.95rem;
+  border-radius: var(--radius);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.turn.user .bubble {
+  background: var(--green);
+  color: #f6faf7;
+  border-bottom-right-radius: 2px;
+}
+
+.turn.assistant .bubble {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--gold);
+  border-bottom-left-radius: 2px;
+}
+
+.bubble p {
+  margin: 0 0 0.6rem;
+}
+
+.bubble p:last-child {
+  margin-bottom: 0;
+}
+
+.bubble ul,
+.bubble ol {
+  margin: 0 0 0.6rem;
+  padding-left: 1.25rem;
+}
+
+.bubble code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--green-tint);
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+}
+
+.caret::after {
+  content: '';
+  display: inline-block;
+  width: 0.5ch;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--gold);
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caret::after {
+    animation: none;
+  }
+  .scroll {
+    scroll-behavior: auto;
+  }
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.badge {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: var(--green-tint);
+  letter-spacing: 0.02em;
+}
+
+.badge.warn {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.badge.error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ------------------------------------------------------------------ * Sources * ------------------------------------------------------------------ */
+.sources {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.sources > summary {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+  list-style: none;
+}
+
+.sources > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sources > summary::before {
+  content: '▸ ';
+  color: var(--gold);
+}
+
+.sources[open] > summary::before {
+  content: '▾ ';
+}
+
+.source-item {
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--rule);
+}
+
+.source-item .name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--green);
+}
+
+@media (prefers-color-scheme: dark) {
+  .source-item .name {
+    color: var(--gold-bright);
+  }
+}
+
+.source-item blockquote {
+  margin: 0.3rem 0 0;
+  padding-left: 0.6rem;
+  border-left: 2px solid var(--rule);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+/* ------------------------------------------------------------------ * Composer * ------------------------------------------------------------------ */
+.composer {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--rule);
+  background: var(--surface);
+}
+
+.composer textarea {
+  flex: 1;
+  min-height: 44px;
+  max-height: 40vh;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  resize: none;
+}
+
+.composer textarea:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 1px;
+  border-color: var(--gold);
+}
+
+.send {
+  min-width: 88px;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--green);
+  color: #f6faf7;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.send:disabled {
+  background: var(--rule);
+  color: var(--ink-soft);
+  cursor: progress;
+}
+
+.send:not(:disabled):hover,
+.send:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+}
+
+.composer .stop {
+  background: var(--danger);
+  color: #fff;
+}
+
+.hint {
+  padding: 0 1rem 0.6rem;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.hint a {
+  color: inherit;
+}
+
+/* ------------------------------------------------------------------ * Session drawer * ------------------------------------------------------------------ */
+.drawer {
+  width: min(18rem, 78vw);
+  padding: 1rem 0.85rem;
+  border-right: 1px solid var(--rule);
+  background: var(--paper);
+  overflow-y: auto;
+}
+
+.drawer h2 {
+  margin: 0 0 0.6rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.drawer ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.drawer button.entry {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.drawer button.entry:hover,
+.drawer button.entry:focus-visible {
+  background: var(--green-tint);
+  outline: 2px solid var(--gold-bright);
+  outline-offset: -2px;
+}
+
+.drawer button.entry[aria-current='true'] {
+  border-color: var(--rule);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.drawer .entry span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.new-chat {
+  width: 100%;
+  margin-bottom: 0.85rem;
+  padding: 0.6rem;
+  min-height: 44px;
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+/* Mobile: the drawer becomes an overlay instead of stealing width. */
+@media (max-width: 46rem) {
+  .body {
+    position: relative;
+  }
+  .drawer {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    box-shadow: var(--shadow);
+  }
+}
+
+/* Anything the model emits that is not prose should not blow out the layout. */
+.bubble pre {
+  overflow-x: auto;
+  font-size: 0.85rem;
+}
+
+/* An answer, its badges and its sources belong visually together, tighter
+   than the gap between turns. */
+.turn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Native selects render their popup with the OS palette, so the control
+   itself needs an opaque background to stay legible on the green masthead. */
+select.icon-button {
+  background: var(--green);
+}
+
+select.icon-button option {
+  color: var(--ink);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
