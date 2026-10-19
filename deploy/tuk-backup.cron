@@ -1,0 +1,33 @@
+# /etc/cron.d/tuk-backup — nightly TUK-ConvoSearch backup.
+#
+# Install it with:
+#     sudo install -m 644 deploy/tuk-backup.cron /etc/cron.d/tuk-backup
+# (install, not cp: it sets owner+mode in one step and survives package tools
+# complaining about a file in /etc/cron.d owned by a normal user.)
+#
+# Format note: this is the crontab.d format, which has an extra USER field
+# between the schedule and the command. Do NOT paste these lines into
+# `crontab -e` — that is the user format and has no USER field, and cron will
+# treat "deploy" as the command.
+#
+# Why 03:30 UTC: the VPS clock is UTC by default and Kenya is UTC+3, so this is
+# 06:30 Nairobi time — after the midnight study sessions, before the 8am queue,
+# when the corpus is static and the query log is quietest.
+#
+# Why not /etc/cron.daily: that runs in the small hours with anacron and a
+# minimal PATH, and Docker needs /usr/bin on the PATH. Also a daily-cron failure
+# is silent; a log to /var/log/ is something you can actually read.
+#
+# Backup dir override and retention live in deploy/backup.sh (BACKUP_DIR,
+# KEEP_DAYS env vars; defaults /var/backups/tuk-convosearch and 14 copies).
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# m h dom mon dow user  command
+30 3 * * *   deploy  /opt/tuk-convosearch/deploy/backup.sh >> /var/log/tuk-backup.log 2>&1
+
+# Weekly reminder that an offsite copy is the only real backup: every Sunday
+# 04:10 the newest archive is checked for existence by a human-readable log
+# line. (Adjust to your own rsync-to-laptop step; cron cannot prompt you.)
+# 10 4 * * 0  deploy  ls -1ht /var/backups/tuk-convosearch/tuk-backup-*.tar.gz | head -3 >> /var/log/tuk-backup.log 2>&1

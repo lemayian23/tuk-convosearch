@@ -1,0 +1,38 @@
+# Line endings are a deployment concern here, not a style preference: a CRLF
+# deploy/bootstrap.sh fails on the VPS with "bash\r: no such file or directory",
+# and CRLF in the Caddyfile or compose file produces errors that point nowhere.
+#
+# core.autocrlf=true on a Windows laptop already normalises on commit, but that
+# is a per-machine setting. These attributes make it a property of the repo, so
+# a fresh clone with autocrlf=false (the Linux default) checks out exactly what
+# the shell needs.
+* text=auto
+
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.svg text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.example text eol=lf
+.env.example text eol=lf
+
+Dockerfile text eol=lf
+Caddyfile text eol=lf
+Makefile text eol=lf
+*.cron text eol=lf
+
+*.bin binary
+*.pkl binary
+*.pdf binary
+*.docx binary
+*.png binary
+*.jpg binary

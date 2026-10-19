@@ -1,0 +1,199 @@
+# Caddyfile for TUK-ConvoSearch.
+#
+# Mounted read-only at /etc/caddy/Caddyfile by deploy/docker-compose.yml
+# (that is the path the caddy:2 image expects; /etc/Caddyfile is not read).
+#
+# ADDRESS COMES FROM THE ENV, not from this file. Compose interpolates
+# ${SITE_ADDRESS} from the repo-root .env and passes it to the container, and
+# Caddy substitutes it here. The default below means the file still works if
+# you run Caddy without the variable, so you only ever edit .env:
+#
+#     SITE_ADDRESS=ask.lemayian.com
+#
+# You MUST have an A record for that hostname pointing at the VPS's public IP
+# before Caddy can get a certificate. Let's Encrypt validates the public
+# address of the domain name; it cannot and will not validate localhost,
+# 41.x.x.x private ranges, or an address that resolves elsewhere. If DNS is not
+# propagated yet, Caddy logs "acme: error" and retries every ~10 minutes —
+# that is normal, leave it running rather than restarting it.
+#
+# Location: deploy/Caddyfile
+
+
+# ====================================================================== #
+# The assistant.
+# ====================================================================== #
+{$SITE_ADDRESS:ask.lemayian.com} {
+	# ------------------------------------------------------------------ #
+	# Security headers.
+	#
+	# FastAPI already sets X-Content-Type-Options, X-Frame-Options and
+	# Referrer-Policy itself (the security_headers middleware in app/main.py)
+	# using `setdefault`, so the values below win and nothing is duplicated.
+	#
+	# CSP — the honest tradeoff:
+	#   * script-src 'self' is safe because Vite emits external module scripts
+	#     (admin/dist/assets/*.js) with no inline <script> blocks, and the
+	#     student SPA does the same.
+	#   * style-src needs 'unsafe-inline' because React puts CSS in inline
+	#     `style="..."` attributes (the whole admin panel is built that way).
+	#     There is no way to keep that UI working without it, short of
+	#     migrating to CSS classes/files or per-build nonces.
+	#   * 'unsafe-inline' for STYLES ONLY is a low-risk compromise: at worst it
+	#     enables visual spoofing, whereas inline *script* execution is the one
+	#     that actually matters. If you ever drop React inline styles, remove
+	#     'unsafe-inline' from style-src.
+	#   * connect-src 'self' keeps the SPA's fetch()/EventSource calls working
+	#     (same origin in production) and blocks exfiltration to a third-party
+	#     origin injected through an XSS.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'"
+		# Do not advertise the Caddy version.
+		-Server
+	}
+
+	# ------------------------------------------------------------------ #
+	# Compression.
+	# FastAPI already gzips its own JSON/markdown responses
+	# (GZipMiddleware in app/main.py, minimum_size=1024) and Caddy does not
+	# re-encode a body that already carries Content-Encoding, so there is no
+	# double compression. This block still earns its keep on the static
+	# bundle files, which are served by StaticFiles through the same
+	# middleware but benefit from zstd for modern browsers.
+	encode zstd gzip
+
+	# ------------------------------------------------------------------ #
+	# Document uploads. TUK_MAX_UPLOAD_MB defaults to 15, so 20 MB leaves
+	# room for multipart framing overhead. Anything larger is rejected with
+	# 413 at the edge instead of being streamed to the app and rejected
+	# there — cheaper on a 2 vCPU box.
+	request_body {
+		max_size 20mb
+	}
+
+	# ------------------------------------------------------------------ #
+	# Readiness/liveness probes: never cached, so a monitoring tab cannot
+	# show you a stale "ready" while the box is actually degraded.
+	# ------------------------------------------------------------------ #
+	@probes path /health /api/health /api/info
+	handle @probes {
+		reverse_proxy app:8000
+		header Cache-Control "no-store"
+	}
+
+	# ------------------------------------------------------------------ #
+	# Streaming chat (Server-Sent Events).
+	#
+	# SSE is the one thing a proxy gets wrong, so it gets its own matcher.
+	# `flush_interval -1` disables Caddy's response buffer entirely: without
+	# it you can see the whole answer appear at once after a long pause,
+	# which looks exactly like "the model is broken" but is buffering.
+	# FastAPI also sends X-Accel-Buffering: no (app/api/chat.py) for the
+	# day you put nginx in front of this.
+	# ------------------------------------------------------------------ #
+	@stream path /api/chat/stream
+	handle @stream {
+		reverse_proxy app:8000 {
+			flush_interval -1
+			# There is deliberately no response timeout here. Caddy's
+			# reverse_proxy puts no deadline on proxied responses by default, so
+			# a 40-second generation is not torn down mid-stream; `response_timeout`
+			# is not even a valid subdirective (caddy validate rejects it).
+			# The stream is never idle for long either: `start`, `route` and
+			# `sources` events are written within the first seconds, and the
+			# app's own budget is TUK_LLM_TIMEOUT_SECONDS.
+		}
+		header Cache-Control "no-store"
+	}
+
+	# ------------------------------------------------------------------ #
+	# OPTIONAL: put a password in front of the interactive API docs.
+	#
+	# /docs, /redoc, /openapi.json are served by FastAPI and are public by
+	# default. That is fine for a student assistant (the endpoint list is not a
+	# secret; the admin API still demands a JWT), but if you would rather the
+	# whole internet not see your API surface, uncomment this block.
+	#
+	# It must stay ABOVE the catch-all `handle` below: `handle` blocks are
+	# mutually exclusive and matched in the order they appear in the file, so a
+	# docs block placed after it would never be reached.
+	#
+	# Generate the bcrypt hash on the server and paste it over the placeholder:
+	#     docker compose -f deploy/docker-compose.yml exec caddy caddy hash-password --plaintext 'YOURPASSWORD'
+	#     # -> $2a$14$...
+	#
+	# @docs path /docs /docs/* /redoc /openapi.json
+	# handle @docs {
+	#     basic_auth {admin $2a$14$REPLACE_WITH_THE_HASH_OUTPUT}
+	#     reverse_proxy app:8000
+	# }
+	# ------------------------------------------------------------------ #
+
+	# ------------------------------------------------------------------ #
+	# Everything else: the API, the student SPA at /, the admin panel at
+	# /admin. Same origin by design, which is why there is no CORS
+	# preflight handling and why TUK_CORS_ORIGINS can stay empty in
+	# production.
+	#
+	# Timeouts: TUK_LLM_TIMEOUT_SECONDS is 120 and the queue can wait 45 on
+	# top of that, so the proxy budget has to exceed 165s or students see a
+	# 502 from Caddy for an answer that was still being generated.
+	# ------------------------------------------------------------------ #
+	handle {
+		reverse_proxy app:8000 {
+			# Caddy rewrites Host/X-Forwarded-* automatically; the app trusts
+			# X-Forwarded-For for rate limiting (TUK_TRUST_FORWARDED_FOR), which
+			# is only safe *because* nothing can reach app:8000 directly.
+			health_uri /health
+			health_interval 30s
+			health_timeout 5s
+		}
+	}
+
+	# ------------------------------------------------------------------ #
+	# Logs: JSON to stdout so `docker compose logs` stays greppable and the
+	# size caps in docker-compose.yml apply. `skip` keeps the 30s health
+	# probes out of the log, otherwise they dominate it.
+	# ------------------------------------------------------------------ #
+	log {
+		format json
+		output stdout
+	}
+
+	tls {
+		protocols tls1.2 tls1.3
+	}
+}
+
+
+# ====================================================================== #
+# www -> the assistant.
+#
+# A separate site block so Let's Encrypt can also answer a challenge for
+# this name if you ever point it at the VPS. If you have NOT created a DNS
+# record for www.lemayian.com, this block is simply never reached — it is
+# harmless. If you have created a CNAME pointing www somewhere else, delete
+# this block so Caddy does not fight over it.
+# ====================================================================== #
+{$WWW_ADDRESS:www.lemayian.com} {
+	redir https://{$SITE_ADDRESS:ask.lemayian.com}{uri} 301
+}
+
+
+# ====================================================================== #
+# Port 80 for the bare IP / any unmatched name.
+#
+# You do NOT need a `:80` block for the main site: Caddy's automatic HTTPS
+# already creates the HTTP->HTTPS redirect and answers ACME HTTP-01
+# challenges on :80 *before* applying the redirect. This block only catches
+# someone browsing http://<VPS-IP>/ directly, which would otherwise get a
+# certificate error for a name that was never requested.
+# ====================================================================== #
+:80 {
+	redir https://{$SITE_ADDRESS:ask.lemayian.com} permanent
+}

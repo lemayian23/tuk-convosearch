@@ -1,3 +1,33 @@
+# Unit tests for the TUK-ConvoSearch framework layer.
+#
+# Why this file replaced two older workflows:
+#   * `tests.yml` (previous version) installed packages ad hoc instead of the
+#     requirements files, ran on 3.10 which the code no longer supports well,
+#     and pulled sentence-transformers' weights from Hugging Face on every
+#     push. The layout also moved: the app is now the `app/` package at the
+#     repo root, so pytest must import `app.*` from the checkout root.
+#   * `jekyll-docker.yml` has been DELETED. It ran `jekyll build` in a
+#     jekyll/builder container against this repository — a pure Python/FastAPI
+#     project with no _config.yml, no Markdown site, and nothing Jekyll can
+#     build. It was almost certainly created by GitHub's "detected a static
+#     site" suggestion, and it failed on every push while telling us nothing.
+#
+# OFFLINE BY CONTRACT — read this before adding a test:
+#   CI has no Ollama and must not download the ~90 MB all-MiniLM-L6-v2 weights.
+#   Therefore a unit test may NOT import anything that instantiates a
+#   SentenceTransformer, opens a network socket, or touches app/services/chat.
+#   The tests currently in tests/ obey this: they exercise app/rag/core
+#   (context, pipeline, base_agent) and app/rag/agents against in-memory fake
+#   stores, which is why they run in ~2 seconds.
+#   If a test genuinely needs the embedder, a live Ollama, or a FAISS rebuild,
+#   mark it  @pytest.mark.integration  and it will be skipped here. Run those
+#   locally with:  pytest -m integration   (Ollama must be up).
+#   We additionally export HF_HUB_OFFLINE=1 / TRANSFORMERS_OFFLINE=1 so an
+#   accidental model download is a loud failure instead of a 5-minute hang.
+#
+# `-m "not integration"` is also in pytest.ini's addopts, and the marker is
+# registered there, so a test that forgets the marker still runs here and a
+# marked one is skipped cleanly (no "unknown marker" warning).
 name: Tests
 
 on:
@@ -7,28 +37,62 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Cancel a superseded run rather than burning 20 free CI minutes on a branch
+# you are still pushing to.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        # 3.11 and 3.12: 3.12 matches deploy/Dockerfile (python:3.12-slim), so
+        # what ships is what is tested. 3.10 is dropped — pyproject requires
+        # >=3.11 and faiss-cpu wheels for 3.10 are becoming scarce.
+        python-version: ["3.11", "3.12"]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
-      - name: Install dependencies
+      - name: Install CPU-only torch first
+        # Without this, pip pulls the CUDA build from PyPI: ~2 GB of nvidia-*
+        # wheels that a GitHub runner cannot use and that blow the install time
+        # and the 10 GB cache. This mirrors deploy/Dockerfile exactly.
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
-          pip install fastapi uvicorn pydantic requests ollama sentence-transformers faiss-cpu numpy
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-      - name: Run unit tests
-        run: python -m pytest tests/ -v --tb=short
+      - name: Install runtime + test dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Collect-only sanity check
+        # Cheap guard: proves `import app...` resolves from the repo root (i.e.
+        # nobody broke packaging) before spending time on the real run.
+        run: python -m pytest tests/ --collect-only -q -m "not integration"
+
+      - name: Run unit tests (offline)
+        env:
+          # Keep CI honest about the offline contract above.
+          HF_HUB_OFFLINE: "1"
+          TRANSFORMERS_OFFLINE: "1"
+          TOKENIZERS_PARALLELISM: "false"
+          # A deterministic, non-production settings snapshot so config.py's
+          # production validator cannot fire if a test constructs Settings().
+          TUK_ENVIRONMENT: "test"
+          TUK_OLLAMA_HOST: "http://127.0.0.1:11434"
+        # pytest.ini/pyproject set testpaths=tests, so `pytest tests/` is
+        # explicit and identical to the local invocation in the Makefile.
+        run: python -m pytest tests/ -m "not integration" --tb=short -q

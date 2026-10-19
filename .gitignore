@@ -39,15 +39,10 @@ logs/
 *.bak
 *.backup
 
-# Document files (keep sample but ignore actual documents if sensitive)
-docs/*.pdf
-docs/*.docx
-!docs/sample.txt
-!docs/university_info.txt
-
-# Frontend node modules (if you add later)
-frontend/node_modules/
-frontend/.next/
+# Knowledge-base source documents. Real TU-K PDFs and DOCX files are the
+# corpus, not source code: they land on the VPS in corpus/tuk/ or through the
+# admin upload, and must never be committed.
+corpus/
 
 # Temporary files
 *.tmp
@@ -56,3 +51,39 @@ temp/
 dist/
 build/
 *.egg-info/
+# -------------------------------------------------------------------- #
+# Deployment artifacts (added with deploy/)
+# -------------------------------------------------------------------- #
+# The real environment file. deploy/.env.example IS tracked; this is not.
+# Repeated here deliberately: the pattern above already covers the exact name
+# .env, but not .env.production / .env.staging, which people create.
+.env.*
+!.env.example
+!deploy/.env.example
+
+# Runtime state. data/ holds the SQLite store (documents, chunks+vectors,
+# sessions, query log) - it is production data, never source.
+data/
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Leftovers from deploy/restore.sh, kept out of git so a second "git add ."
+# cannot commit a copy of live data.
+*.before-restore-*
+
+# Built frontends. The Docker image does not bake them (see deploy/Dockerfile);
+# they are rsynced to the VPS and bind-mounted, so the repo only ever holds the
+# npm output of a local build.
+web/dist/
+admin/dist/
+node_modules/
+
+# Local scratch for the deploy scripts and backups taken on the dev machine.
+deploy/*.log
+deploy/backups/
+backup/
+
+# Vite dev config for the admin panel: it holds only VITE_API_BASE for talking
+# to a localhost API, no secrets, and it must be tracked or local dev breaks.
+!admin/.env.development

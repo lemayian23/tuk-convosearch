@@ -1,0 +1,308 @@
+# TUK-ConvoSearch production stack: Ollama + FastAPI + Caddy.
+#
+# WHERE TO RUN THIS FROM (important):
+#   Always run it from the REPO ROOT so that the project directory is the repo
+#   root. That is what makes `context: .`, `./data`, `./corpus` and the repo-root
+#   `.env` resolve correctly:
+#
+#       cd /opt/tuk-convosearch
+#       docker compose -f deploy/docker-compose.yml config -q     # validates
+#       deploy/deploy.sh                                          # does this for you
+#
+#   deploy/deploy.sh, deploy/backup.sh and the root Makefile all pass
+#   `--project-directory <repo root>` for exactly this reason. Do not run
+#   `docker compose up` from inside deploy/ — Compose would then look for
+#   deploy/.env and deploy/data and silently build the wrong thing.
+#
+# .env at the repo root is the single source of truth. Compose injects it into
+# the app container via `env_file`, and interpolates ${SITE_ADDRESS} for Caddy
+# from the same file. See deploy/.env.example for every supported variable.
+#
+# Location: deploy/docker-compose.yml
+
+name: tuk-convosearch
+
+# json-file logs are unbounded by default, and a chat app that logs every token
+# will happily fill a 40 GB VPS disk. 3 x 10 MB per container is the ceiling.
+# This anchor must stay ABOVE the services that alias it: Compose's YAML loader
+# resolves anchors in document order and errors on a forward reference.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # -------------------------------------------------------------------- #
+  # Ollama — the only thing in this stack that actually needs RAM.
+  # -------------------------------------------------------------------- #
+  ollama:
+    # `latest` rather than a pinned patch tag: an unpinned-but-valid tag breaks
+    # the whole deploy with "manifest unknown" if I guessed the version wrong,
+    # and Ollama's model-format changes are backward-compatible. Once this box is
+    # running well, pin it (docker inspect --format '{{.Image}}' tuk-ollama) so a
+    # surprise upstream release cannot change your answer quality mid-semester.
+    image: ollama/ollama:latest
+    container_name: tuk-ollama
+    restart: unless-stopped
+
+    # NO `ports:` block on purpose. Nothing outside this Docker network can
+    # reach 11434, and ufw (set up by deploy/bootstrap.sh) denies it from
+    # outside anyway. An exposed Ollama box gets mined for free GPU/CPU within
+    # hours — treat 11434 as a private port.
+    #
+    # We deliberately do NOT mark the network `internal: true`. An internal
+    # network has no route to the internet, and `ollama pull` needs to reach
+    # registry.ollama.ai. Isolation is achieved by publishing nothing instead.
+    networks: [tuk-internal]
+
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      # One model resident at a time. Loading llama3.2:3b *and* a 7b alongside
+      # it is how a 8GB box ends up in the OOM killer. If you raise
+      # TUK_OLLAMA_MODEL and TUK_OLLAMA_REASONING_MODEL to the same model name
+      # this costs you nothing; if they differ, the second one is evicted.
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      # Keep the model warm between questions so students on slow Data lines are
+      # not charged for a reload every time. The app overrides this per request
+      # with TUK_LLM_KEEP_ALIVE (default 30m); this value only applies to
+      # requests made directly against Ollama.
+      OLLAMA_KEEP_ALIVE: "10m"
+      # Requests beyond the parallelism cap queue inside Ollama rather than
+      # failing. The app's own semaphore (TUK_MAX_CONCURRENT_LLM_CALLS) fires
+      # first and returns a clean 503, so this is a backstop only.
+      OLLAMA_MAX_QUEUE: "16"
+      # Serve one request at a time per model load. Raising this multiplies RAM
+      # per resident model and is the usual cause of "was fine, then OOM".
+      OLLAMA_NUM_PARALLEL: "1"
+
+    volumes:
+      - ollama_models:/root/.ollama
+
+    deploy:
+      resources:
+        limits:
+          # ASSUMED TOTAL RAM: 8 GB (see the memory budget comment at the bottom
+          # of this file for the 4 GB and 16 GB variants).
+          memory: 6g
+          cpus: "3.0"
+
+    healthcheck:
+      # `ollama list` is the documented check: the binary ships in the image and
+      # it proves both that the daemon is up and that its API socket answers.
+      # The image is minimal (no curl/wget), so do not try an HTTP check here.
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    logging: *default-logging
+
+  # -------------------------------------------------------------------- #
+  # app — FastAPI, the student SPA and the admin panel, all one origin.
+  # -------------------------------------------------------------------- #
+  app:
+    build:
+      context: .                     # repo root, resolved from --project-directory
+      dockerfile: deploy/Dockerfile
+    image: tuk-convosearch-app:latest
+    container_name: tuk-app
+    restart: unless-stopped
+
+    # ONE WORKER IS DELIBERATE — DO NOT "OPTIMISE" THIS.
+    # deploy/Dockerfile hardcodes `uvicorn --workers 1`. Three things in this
+    # app assume exactly one process:
+    #   1. One Ollama instance is the real bottleneck; N workers do not create
+    #      N GPUs, they create N queues for the same model.
+    #   2. The rate limiter (app/services/rate_limit.py) is an in-process dict;
+    #      with 4 workers each worker gets its own budget, so the effective
+    #      limit becomes rate_limit_per_minute * workers.
+    #   3. The embedder + FAISS index + built pipelines are loaded per process
+    #      (app/services/pipelines.py, app/ingestion/index.py). Two workers =
+    #      two copies of sentence-transformers in RAM = OOM on a small VPS.
+    # If you ever need more throughput, buy RAM/CPU or move Ollama off-box —
+    # do not raise --workers.
+    #
+    # The port is intentionally NOT published. Caddy reaches it over the Docker
+    # network. Publish `8000:8000` only for a temporary debug session, and
+    # remove it before you sleep — the admin API has no IP allowlist.
+    expose:
+      - "8000"
+
+    networks: [tuk-internal, tuk-web]
+
+    # Every TUK_* setting the app reads lives here. The app process sees them as
+    # real environment variables; pydantic-settings would also accept a
+    # /srv/app/.env file but the image does not ship one.
+    env_file:
+      - .env
+
+    volumes:
+      # Durable store: SQLite database + chunk vectors, WAL sidecars included.
+      - ./data:/srv/app/data
+      # The corpus the app indexes and writes uploads into.
+      - ./corpus:/srv/app/corpus
+
+      # ---- Built frontends, served from the API origin -------------------
+      # The Dockerfile intentionally does not COPY these (npm builds happen on
+      # your laptop, not in a RAM-starved data centre), so the bundles have to
+      # arrive by bind mount. Build + sync them first:
+      #     npm --prefix admin run build
+      #     npm --prefix web   run build      # student SPA
+      #     rsync -a admin/dist/ root@VPS:/opt/tuk-convosearch/admin/dist/
+      #     rsync -a web/dist/   root@VPS:/opt/tuk-convosearch/web/dist/
+      #
+      # If you have NOT built them, LEAVE THESE TWO LINES ALONE. Bind-mounting a
+      # directory that does not exist on the host makes Docker create an empty
+      # one; app/main.py only mounts StaticFiles when index.html is present, so
+      # an empty bundle means / keeps redirecting to /docs instead of serving a
+      # bare 404. Building them later needs no compose edit, just an rsync and
+      # a restart.
+      - ./admin/dist:/srv/app/admin/dist:ro
+      - ./web/dist:/srv/app/web/dist:ro
+
+      # Uncomment only if students will use the "cancer" literature pipeline:
+      # it queries the local FAISS snapshot plus NCBI E-utilities (needs outbound
+      # HTTPS). pubmed_index/ is excluded by .dockerignore, so it must be synced
+      # and mounted explicitly.
+      # - ./pubmed_index:/srv/app/pubmed_index:ro
+
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+    healthcheck:
+      # Liveness (/health) rather than readiness (/api/health): a fresh deploy
+      # legitimately reports "degraded" for the first minutes because the model
+      # has not been pulled yet, and `depends_on: service_healthy` would then
+      # never consider the app started. deploy/deploy.sh is what gates on the
+      # readiness endpoint /api/health.
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # The embedder loads and the whole corpus is re-scored into FAISS at boot;
+      # on a 2 vCPU box that is comfortably over a minute.
+      start_period: 120s
+
+    deploy:
+      resources:
+        limits:
+          memory: 1.5g
+          cpus: "1.5"
+
+    logging: *default-logging
+
+  # -------------------------------------------------------------------- #
+  # Caddy — TLS termination and the only container with published ports.
+  # -------------------------------------------------------------------- #
+  caddy:
+    image: caddy:2
+    container_name: tuk-caddy
+    restart: unless-stopped
+
+    ports:
+      - "80:80"     # HTTP + ACME HTTP-01 challenges
+      - "443:443"   # HTTPS
+
+    networks: [tuk-web]
+
+    environment:
+      # Interpolated from the repo-root .env by Compose and substituted into
+      # the Caddyfile by Caddy's {$VAR:default} placeholders.
+      SITE_ADDRESS: ${SITE_ADDRESS:-ask.lemayian.com}
+      WWW_ADDRESS: ${WWW_ADDRESS:-www.lemayian.com}
+
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # certificates + OCSP stapling cache
+      - caddy_config:/config    # autosaved JSON; keeps restarts quiet
+
+    depends_on:
+      app:
+        condition: service_healthy
+
+    healthcheck:
+      # Caddy's admin API listens on localhost:2019 inside the container and is
+      # not reachable from outside (we never publish it). caddy:2 is alpine
+      # based, so busybox `wget` is available but `curl` is not.
+      # If this check ever reports "unhealthy" while the site works, the image
+      # variant you pulled lacks wget — delete this block rather than debugging.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: "0.5"
+
+    logging: *default-logging
+
+networks:
+  # Private hop between app and Ollama. No published ports on it, so the only
+  # way in is through Caddy -> app -> here.
+  tuk-internal:
+    driver: bridge
+  # The only network that faces the internet (Caddy + app).
+  tuk-web:
+    driver: bridge
+
+volumes:
+  ollama_models:
+    name: tuk-ollama-models
+  caddy_data:
+    name: tuk-caddy-data
+  caddy_config:
+    name: tuk-caddy-config
+
+# json-file logs are unbounded by default, and a chat app that logs every token
+# will happily fill a 40 GB VPS disk. 3 x 10 MB per container is the ceiling.
+# `x-logging: &default-logging` at the top of this file is what the three
+# `logging: *default-logging` blocks above expand to.
+
+# ---------------------------------------------------------------------- #
+# ONE-SHOT MODEL PULL (commented out on purpose — you only need it on day 1
+# and when you change TUK_OLLAMA_MODEL).
+#
+# `docker compose ... run --rm pull-models` re-uses the ollama image and the
+# ollama_models volume, so the weights land where the long-running ollama
+# container will find them. It is a `run` service, not an `up` service, so it
+# does not start on every reboot.
+#
+# deploy/pull-models.sh does this for you (it reads the model names out of
+# .env instead of repeating them here); this block is the manual alternative
+# and the pattern to copy for a one-off `ollama rm`.
+#
+#  pull-models:
+#    image: ollama/ollama:latest
+#    networks: [tuk-internal]
+#    volumes:
+#      - ollama_models:/root/.ollama
+#    # --network host is NOT needed; the daemon is already running as a
+#    # sibling container, so point the client at it instead:
+#    environment:
+#      OLLAMA_HOST: http://ollama:11434
+#    entrypoint: ["/bin/sh", "-c"]
+#    command: ["ollama pull llama3.2:1b && ollama pull llama3.2:3b && ollama list"]
+#    profiles: ["tools"]
+# ---------------------------------------------------------------------- #
+
+# ---------------------------------------------------------------------- #
+# MEMORY BUDGET — pick the row that matches your VPS and edit the three
+# `memory:` limits above (ollama / app / caddy). Leave ~1 GB headroom for the
+# OS; Docker will not warn you before the OOM killer does.
+#
+#   TOTAL RAM | ollama | app  | caddy | recommended TUK_OLLAMA_MODEL | TUK_MAX_CONCURRENT_LLM_CALLS
+#   ----------+--------+------+-------+------------------------------+-----------------------------
+#     4 GB    |   2.5g | 1g   | 128m  | llama3.2:1b                  | 1
+#     8 GB    |     6g | 1.5g | 128m  | llama3.2:3b                  | 2   <-- assumed default
+#    16 GB    |    13g | 2.5g | 256m  | qwen2.5:7b-instruct          | 4
+#
+# `cpus:` limits matter less than memory, but capping Ollama below the full
+# core count keeps it from starving the app's embedding calls on a 2 vCPU box.
+# ---------------------------------------------------------------------- #
