@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tuk-convosearch"
 version = "0.1.0"
-description = "A modular RAG framework for high-stakes question-answering domains"
+description = "TU-K student assistant: a RAG question-answering service over university documents, built on a pluggable multi-agent pipeline"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
@@ -15,11 +15,10 @@ authors = [
 ]
 keywords = ["rag", "retrieval-augmented-generation", "llm", "ollama", "faiss", "cancer-research", "medical-ai"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
