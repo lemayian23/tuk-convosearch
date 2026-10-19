@@ -4,7 +4,7 @@ RetrieverAgent — wraps a BaseVectorStore as a pipeline Agent.
 Reads:  context.question, context.top_k, context.route
 Writes: context.retrieved_chunks, context.sources, context.retrieval_query
 
-Location: backend/app/rag/agents/retriever_agent.py
+Location: app/rag/agents/retriever_agent.py
 """
 
 from typing import List, Dict, Any
@@ -50,6 +50,20 @@ class RetrieverAgent(RetrievalAgent):
         context.metadata["context_string"] = self.build_context_string(chunks)
 
         return context
+
+    def stream(self, context: RAGContext):
+        """
+        Retrieval is not token-streamable, but it is the slowest step the
+        user cannot see, so emit the sources as soon as they are known. The
+        student's browser can then show "from 2026 Academic Year Calendar"
+        while the answer is still being generated.
+        """
+        context = self.run(context)
+        yield {
+            "type": "sources",
+            "sources": [source.to_dict() for source in context.sources],
+            "chunks_found": len(context.retrieved_chunks),
+        }
 
     def build_context_string(self, chunks: List[Dict[str, Any]]) -> str:
         if not chunks:

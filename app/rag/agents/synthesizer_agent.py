@@ -11,10 +11,12 @@ Streaming yields {'type': 'token', 'content': ...} events.
 Location: app/rag/agents/synthesizer_agent.py
 """
 
-from typing import Generator, Dict, Any, Optional
+from typing import Generator, Dict, Any, Optional, Union
 
 from app.rag.core.base_agent import GenerationAgent
 from app.rag.core.context import RAGContext
+
+NO_ANSWER = "I could not form an answer just now. Please ask again in a moment."
 
 
 class SynthesizerAgent(GenerationAgent):
@@ -27,7 +29,8 @@ class SynthesizerAgent(GenerationAgent):
         num_predict:     max tokens to generate
         temperature:     sampling temperature (0.0 = deterministic)
         num_ctx:         context window size
-        keep_alive:      Ollama keep_alive (e.g. -1 to keep model resident)
+        keep_alive:      Ollama keep_alive — seconds as an int ("stay resident")
+                       or a duration string like "30m"
         repeat_penalty:  discourage repetition (small models need this)
     """
 
@@ -38,7 +41,7 @@ class SynthesizerAgent(GenerationAgent):
         num_predict: int = 300,
         temperature: float = 0.2,
         num_ctx: int = 2048,
-        keep_alive: int = -1,
+        keep_alive: Union[int, str] = -1,
         repeat_penalty: float = 1.1,
         name: str = "Synthesizer",
     ):
@@ -60,11 +63,11 @@ class SynthesizerAgent(GenerationAgent):
         if context.answer:
             return context
 
-        import ollama  # lazy import — only needed when actually generating
+        from app.services.ollama import client as ollama_client
 
         prompt = self._build_prompt(context)
         try:
-            response = ollama.chat(
+            response = ollama_client().chat(
                 model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
                 options=self._options(),
@@ -74,7 +77,10 @@ class SynthesizerAgent(GenerationAgent):
             context.answer_tokens = [context.answer]
         except Exception as e:
             context.error = f"Synthesis failed: {e}"
-            context.answer = f"Error generating answer: {e}"
+            # The exception text names hosts and ports; the student only gets
+            # a sentence, while /api/chat logs context.error for the operator.
+            context.answer = NO_ANSWER
+            context.answer_tokens = [NO_ANSWER]
 
         return context
 
@@ -88,12 +94,12 @@ class SynthesizerAgent(GenerationAgent):
             yield {"type": "token", "content": context.answer}
             return
 
-        import ollama  # lazy import
+        from app.services.ollama import client as ollama_client
 
         prompt = self._build_prompt(context)
 
         try:
-            stream = ollama.chat(
+            stream = ollama_client().chat(
                 model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
                 options=self._options(),
@@ -107,9 +113,8 @@ class SynthesizerAgent(GenerationAgent):
                     yield {"type": "token", "content": token}
         except Exception as e:
             context.error = f"Synthesis failed: {e}"
-            error_msg = f"Error generating answer: {e}"
-            context.answer_tokens.append(error_msg)
-            yield {"type": "token", "content": error_msg}
+            context.answer_tokens.append(NO_ANSWER)
+            yield {"type": "token", "content": NO_ANSWER}
 
     # ------------------------------------------------------------------ #
     # Helpers

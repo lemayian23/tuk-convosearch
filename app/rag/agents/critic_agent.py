@@ -134,7 +134,7 @@ class CriticAgent(ValidationAgent):
     # ------------------------------------------------------------------ #
 
     def _check_llm(self, answer: str, context_str: str) -> tuple[bool, str]:
-        import ollama  # lazy import — only needed in llm mode
+        from app.services.ollama import client as ollama_client
 
         prompt = (
             "Compare the ANSWER to the CONTEXT. Decide if the ANSWER is FAITHFUL "
@@ -150,7 +150,7 @@ class CriticAgent(ValidationAgent):
         )
 
         try:
-            response = ollama.chat(
+            response = ollama_client().chat(
                 model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
                 options={"num_predict": 5, "temperature": 0.0, "num_ctx": 4096},

@@ -1,4 +1,4 @@
-"""FAISS-backed BaseVectorStore. Location: backend/app/rag/stores/faiss_store.py"""
+"""FAISS-backed BaseVectorStore. Location: app/rag/stores/faiss_store.py"""
 
 import os
 import pickle

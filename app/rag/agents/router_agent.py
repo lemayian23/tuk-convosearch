@@ -11,13 +11,43 @@ Writes: context.route, context.route_reason
         context.answer (only for small_talk / off_topic)
         context.metadata["context_string"] (empty for short-circuits)
 
-Location: backend/app/rag/agents/router_agent.py
+Location: app/rag/agents/router_agent.py
 """
 
 from typing import Dict, List, Optional
+import re
 
 from app.rag.core.base_agent import Agent
 from app.rag.core.context import RAGContext
+
+# Words that only ever appear in greeting / presence-check chatter. A
+# question is small talk when EVERY word of it is in this set, which is why
+# it is a set and not a regex: "hi, are you there?" has to match, while
+# "which units are offered" must not — substring matching on "hi" would
+# swallow "which", and half the questions in a student corpus start with it.
+SMALL_TALK_WORDS = frozenset(
+    """
+    hi hello hey yo hola sup good morning afternoon evening day
+    how are r you your ur there real human bot ai ok okay
+    thanks thank you sorry please yes no fine well just and the a an it's its
+    """.split()
+)
+
+# Longest chatter worth answering with a canned reply. Beyond this the message
+# almost certainly carries a question ("hi i want to know when exams start").
+MAX_GREETING_WORDS = 6
+
+
+_WORD = re.compile(r"[a-z']+")
+
+
+def _is_bare_greeting(q_lower: str) -> bool:
+    words = _WORD.findall(q_lower)
+    return (
+        bool(words)
+        and len(words) <= MAX_GREETING_WORDS
+        and all(w in SMALL_TALK_WORDS for w in words)
+    )
 
 
 class RouterAgent(Agent):
@@ -30,6 +60,9 @@ class RouterAgent(Agent):
         domain_keywords: terms that indicate an in-domain question
         easter_eggs:     dict of {lowercase trigger -> canned reply}
         off_topic_message: reply when no keyword matches
+        small_talk_message: reply to a bare greeting ("hi", "thanks"). None
+                         disables greeting handling and lets those through to
+                         the off-topic filter.
         min_length:      questions shorter than this bypass the off-topic
                          check (prevents rejecting "hi", "ok", etc.)
     """
@@ -39,12 +72,14 @@ class RouterAgent(Agent):
         domain_keywords: List[str],
         easter_eggs: Optional[Dict[str, str]] = None,
         off_topic_message: str = "I can only answer questions about this domain.",
+        small_talk_message: Optional[str] = None,
         min_length: int = 5,
         name: str = "Router",
     ):
         self.domain_keywords = [kw.lower() for kw in domain_keywords]
         self.easter_eggs = {k.lower(): v for k, v in (easter_eggs or {}).items()}
         self.off_topic_message = off_topic_message
+        self.small_talk_message = small_talk_message
         self.min_length = min_length
         self.name = name
 
@@ -63,6 +98,13 @@ class RouterAgent(Agent):
                 context.answer = reply
                 context.grounded = True  # canned replies are "grounded" by definition
                 return context
+
+        if self.small_talk_message and _is_bare_greeting(q_lower):
+            context.route = "small_talk"
+            context.route_reason = "bare greeting"
+            context.answer = self.small_talk_message
+            context.grounded = True
+            return context
 
         # 2. Off-topic filter — only if the question is long enough to judge
         if len(q_lower) > self.min_length and not self._is_in_domain(q_lower):

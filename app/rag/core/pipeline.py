@@ -147,13 +147,12 @@ class Pipeline:
                     continue
 
                 try:
-                    # Streaming agent — yield its events directly
+                    # Streaming agent — the agent records its own tokens in
+                    # context.answer_tokens; the pipeline only forwards them.
+                    # Appending here as well used to double every word.
                     if type(agent).stream is not Agent.stream:
                         for event in agent.stream(context):
-                            if event.get("type") == "token":
-                                context.answer_tokens.append(event["content"])
                             yield event
-                        # Reassemble full answer after stream completes
                         context.answer = "".join(context.answer_tokens)
                     else:
                         context = agent.run(context)

@@ -34,10 +34,10 @@ class QueryExpansionAgent(Agent):
         if context.route in ("small_talk", "off_topic"):
             return context
 
-        import ollama  # lazy import
+        from app.services.ollama import client as ollama_client
 
         try:
-            response = ollama.chat(
+            response = ollama_client().chat(
                 model=self.model_name,
                 messages=[{
                     "role": "user",

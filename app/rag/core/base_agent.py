@@ -1,6 +1,6 @@
 """
 Abstract base classes for the modular RAG framework.
-Location: backend/app/rag/core/base_agent.py
+Location: app/rag/core/base_agent.py
 """
 
 from abc import ABC, abstractmethod

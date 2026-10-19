@@ -1,4 +1,4 @@
-"""Abstract VectorStore interface. Location: backend/app/rag/stores/base_store.py"""
+"""Abstract VectorStore interface. Location: app/rag/stores/base_store.py"""
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any

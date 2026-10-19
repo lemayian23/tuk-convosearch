@@ -1,6 +1,6 @@
 """
 Shared RAGContext passed between all agents in a pipeline.
-Location: backend/app/rag/core/context.py
+Location: app/rag/core/context.py
 """
 
 from dataclasses import dataclass, field, asdict
