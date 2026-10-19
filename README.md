@@ -72,7 +72,7 @@ Answer + Sources
 
 - **Single responsibility** — each agent does one thing
 - **Swappable** — replace any agent or store without touching the pipeline
-- **Testable** — 122 unit tests, all isolated (no LLM calls, no I/O; Ollama is faked)
+- **Testable** — 124 unit tests, all isolated (no LLM calls, no I/O; Ollama is faked)
 - **Measurable** — an eval harness with a fixed question set and per-question scoring
 
 ---
@@ -234,7 +234,7 @@ tuk-convosearch/
 │   ├── main.py                             # app factory; lifespan warms index + model, serves the built SPAs
 │   ├── config.py                           # pydantic-settings (env prefix TUK_), production validators
 │   ├── api/
-│   │   ├── chat.py                         # POST /api/chat + /api/chat/stream (SSE), sessions
+│   │   ├── chat.py                         # POST /api/chat + /api/chat/stream (SSE), history by id
 │   │   ├── admin.py                        # documents, index stats, logs (JWT-protected)
 │   │   ├── auth_routes.py                  # POST /api/auth/login, GET /api/auth/me
 │   │   ├── health.py                       # /health (liveness) vs /api/health (readiness)
@@ -318,6 +318,8 @@ Everything deployment-related lives in `deploy/`, and **[`deploy/RUNBOOK.md`](de
 
 Two production guards live in `app/config.py` rather than in a checklist, because checklists get skipped: a short `TUK_SECRET_KEY` and a `*` CORS origin both raise at startup when `TUK_ENVIRONMENT=production`. The data that matters is `data/tuk_convosearch.db` (documents, chunks, vectors, sessions, query log) and `corpus/` — those two paths are what `make backup` archives.
 
+Students have no login, so a session id is also the only access token a conversation has. That rules out one obvious-looking feature: there is no `GET /api/sessions`. A list of every conversation would publish those ids along with every title, and `GET /api/sessions/{id}/messages` trusts the id. The operator view is `GET /api/admin/sessions`, behind the same JWT as the rest of `/api/admin`, and the drawer in the student UI reads its list from `localStorage` (`web/src/history.js`) rather than from the server.
+
 ---
 
 ## Extending the framework
@@ -384,7 +386,7 @@ python -m pytest
 
 Plain pytest, not `make test` — the root `Makefile` only wraps operations on a deployed box.
 
-122 unit tests, and none of them need Ollama: the pipeline, the embedding model and the corpus index are faked (`tests/conftest.py` plus per-test monkeypatching), so the suite runs offline in CI and on a laptop. `pytest.ini` excludes anything marked `integration` by design; `tests/test_integration_pipeline.py` is that mark — a real end-to-end run over your own `data/` and `corpus/`, skipped automatically when Ollama or the model is missing. Run it on a box that has both:
+124 unit tests, and none of them need Ollama: the pipeline, the embedding model and the corpus index are faked (`tests/conftest.py` plus per-test monkeypatching), so the suite runs offline in CI and on a laptop. `pytest.ini` excludes anything marked `integration` by design; `tests/test_integration_pipeline.py` is that mark — a real end-to-end run over your own `data/` and `corpus/`, skipped automatically when Ollama or the model is missing. Run it on a box that has both:
 
 ```bash
 pytest -m integration
@@ -431,7 +433,7 @@ What's done, what's next, what's not planned.
 
 - Modular agent pipeline with retries and short-circuit routing
 - Two domain pipelines (TU-K student assistant, cancer research) behind one endpoint
-- 122 unit tests, all isolated from LLMs and I/O, running in GitHub Actions CI (Python 3.11 and 3.12), plus a marked end-to-end integration test for a box that has Ollama
+- 124 unit tests, all isolated from LLMs and I/O, running in GitHub Actions CI (Python 3.11 and 3.12), plus a marked end-to-end integration test for a box that has Ollama
 - Evaluation harness with real numbers
 - Live PubMed ingestion via NCBI E-utilities
 - Citation enforcement in the synthesizer

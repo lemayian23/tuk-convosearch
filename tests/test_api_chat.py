@@ -72,11 +72,28 @@ def test_stream_emits_ordered_events(client):
     assert "exams start" in streamed
 
 
-def test_sessions_are_listed_and_deletable(client):
+def test_no_route_lists_every_session(client):
+    """
+    Regression. Students have no login, so a route returning every session
+    published other students' ids - and with them every transcript, since
+    /api/sessions/{id}/messages trusts the id. The list is admin-only now and
+    the browser keeps its own history (web/src/history.js).
+    """
+    assert client.get("/api/sessions").status_code == 404
+    assert client.get("/api/admin/sessions").status_code == 401
+
+
+def test_operator_can_list_sessions(client, auth_headers):
     session_id = client.post("/api/chat", json={"message": "fees?"}).json()["session_id"]
 
-    listed = client.get("/api/sessions").json()
-    assert any(s["session_id"] == session_id for s in listed)
+    listed = client.get("/api/admin/sessions", headers=auth_headers)
+    assert listed.status_code == 200
+    assert any(s["session_id"] == session_id for s in listed.json())
+    assert {"session_id", "title", "message_count"} <= set(listed.json()[0])
+
+
+def test_the_browser_holding_an_id_can_delete_that_session(client):
+    session_id = client.post("/api/chat", json={"message": "fees?"}).json()["session_id"]
 
     assert client.delete(f"/api/sessions/{session_id}").status_code == 204
     assert client.get(f"/api/sessions/{session_id}/messages").json() == []

@@ -9,7 +9,8 @@ import Composer from './components/Composer'
 import Drawer from './components/Drawer'
 import Message from './components/Message'
 import Sources from './components/Sources'
-import { getConfig, getHealth, getMessages, getSessions, streamChat } from './api'
+import { getConfig, getHealth, getMessages, streamChat } from './api'
+import { readHistory, rememberSession } from './history'
 
 const SESSION_KEY = 'tuk.session_id'
 const PIPELINE_KEY = 'tuk.pipeline'
@@ -48,7 +49,7 @@ export default function App() {
   const [messages, setMessages] = useState([])
   const [sessionId, setSessionId] = useState(() => readStored(SESSION_KEY))
   const [pipeline, setPipeline] = useState(() => readStored(PIPELINE_KEY) || 'tuk')
-  const [sessions, setSessions] = useState([])
+  const [sessions, setSessions] = useState(readHistory)
   const [streaming, setStreaming] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -103,10 +104,6 @@ export default function App() {
     return () => {
       alive = false
     }
-  }, [])
-
-  useEffect(() => {
-    getSessions().then(setSessions).catch(() => {})
   }, [])
 
   // A refresh must not blank a conversation the student was just reading.
@@ -173,9 +170,15 @@ export default function App() {
       const controller = new AbortController()
       abort.current = controller
 
+      // `sessionId` is still the previous conversation here; the id for this
+      // one arrives on the `start` event, and the history entry needs it.
+      let activeId = sessionId
+      let answered = false
+
       const onEvent = (event) => {
         switch (event.type) {
           case 'start':
+            activeId = event.session_id
             setSessionId(event.session_id)
             break
           case 'route':
@@ -203,6 +206,7 @@ export default function App() {
             break
           case 'done': {
             const context = event.context || {}
+            answered = Boolean(context.answer)
             patchDraft((turn) => ({
               ...turn,
               // The streamed tokens can lag the finished context by a frame;
@@ -247,7 +251,7 @@ export default function App() {
         patchDraft((turn) => ({ ...turn, streaming: false }))
         abort.current = null
         setStreaming(false)
-        getSessions().then(setSessions).catch(() => {})
+        setSessions(rememberSession({ sessionId: activeId, question: text, answered }))
       }
     },
     [patchDraft, pipeline, sessionId, streaming],

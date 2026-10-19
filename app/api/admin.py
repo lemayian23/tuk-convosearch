@@ -19,7 +19,7 @@ from fastapi import (
 )
 from starlette.concurrency import run_in_threadpool
 
-from app.api.schemas import DocumentOut
+from app.api.schemas import DocumentOut, SessionOut
 from app.config import get_settings
 from app.ingestion.documents import SUPPORTED_EXTENSIONS, save_upload
 from app.ingestion.index import get_index
@@ -157,6 +157,16 @@ async def index_status() -> Dict[str, Any]:
 async def recent_logs(limit: int = 50) -> List[Dict[str, Any]]:
     limit = max(1, min(limit, 500))
     return database.get_recent_queries(limit=limit)
+
+
+@router.get("/sessions", response_model=List[SessionOut])
+async def list_sessions(limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    Every conversation on the box, titles included. Admin-only: students have
+    no login, so this list would be a directory of other people's transcripts.
+    """
+    limit = max(1, min(limit, 500))
+    return database.list_sessions(limit=limit)
 
 
 @router.get("/stats")

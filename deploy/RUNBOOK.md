@@ -477,13 +477,19 @@ Expected: a stream of `data: {...}` lines starting with
 `{"type":"start","session_id":"..."}`, several token/delta events, ending with
 `{"type":"end"}`. Keep the `-N` — it disables curl's own buffering.
 
-Follow one conversation (note: session ids are 8–64 chars of letters/digits/`_`/`-`):
+List recent conversations — **admin only** (`$TOKEN` from the login recipe in §10):
 
 ```bash
-curl -sS "https://ask.lemayian.com/api/sessions?limit=5"
+curl -sS -H "Authorization: Bearer $TOKEN" "https://ask.lemayian.com/api/admin/sessions?limit=5"
 ```
 
-Expected: a JSON array of sessions with `session_id`, `title`, `message_count`.
+Expected: a JSON array with `session_id`, `title`, `created_at`, `last_active_at`,
+`message_count`. There is no unauthenticated equivalent on purpose: students have
+no login, so the only thing separating one student's history from another is an
+unguessable session id, and a public list would hand every id — and therefore
+every transcript — to whoever asks. The student drawer reads its own list from
+browser storage instead (`web/src/history.js`), which is why clearing site data
+on a phone also clears what that phone remembers.
 
 Rate limiting is live: 28 rapid questions per minute from one IP returns `429`:
 

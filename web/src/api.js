@@ -27,11 +27,9 @@ async function json(response) {
 
 export const getConfig = () => fetch(`${BASE}/api/config`).then(json)
 export const getHealth = () => fetch(`${BASE}/api/health`).then(json)
-export const getSessions = () => fetch(`${BASE}/api/sessions`).then(json)
+// Deliberately no list-sessions call here: see web/src/history.js.
 export const getMessages = (sessionId) =>
   fetch(`${BASE}/api/sessions/${sessionId}/messages`).then(json)
-export const removeSession = (sessionId) =>
-  fetch(`${BASE}/api/sessions/${sessionId}`, { method: 'DELETE' }).then((r) => r.ok)
 
 /**
  * Send a question and hand each server event to `onEvent` as it arrives.

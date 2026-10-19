@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import enforce_rate_limit
-from app.api.schemas import ChatRequest, ChatResponse, MessageOut, SessionOut
+from app.api.schemas import ChatRequest, ChatResponse, MessageOut
 from app.config import get_settings
 from app.services import database
 from app.services.chat import ChatBusyError, ChatTimeoutError, get_chat_service
@@ -115,12 +115,13 @@ async def chat_stream(
     )
 
 
-@router.get("/api/sessions", response_model=list[SessionOut])
-async def list_sessions(limit: int = 30, _: None = Depends(enforce_rate_limit)):
-    limit = max(1, min(limit, 100))
-    return database.list_sessions(limit=limit)
-
-
+# There is deliberately no "list my conversations" route here. Students have
+# no login, so the only thing separating one student's history from another is
+# that a session id is a random 128-bit hex string the browser already holds.
+# A route returning every session would hand those ids to anyone, which also
+# hands them every transcript. The operator view lives on the admin router
+# instead (GET /api/admin/sessions), and the UI keeps its own list in
+# localStorage.
 @router.get("/api/sessions/{session_id}/messages", response_model=list[MessageOut])
 async def session_messages(session_id: str, _: None = Depends(enforce_rate_limit)):
     _validate_session_id(session_id)
