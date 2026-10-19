@@ -1,0 +1,95 @@
+================================================================================
+Running tuk evaluation: 17 questions
+  critic_mode=heuristic, enable_expansion=True
+================================================================================
+✓ Pipeline initialized with 4 agents:
+    0. Router
+    1. Retriever
+    2. Synthesizer [retry-from]
+    3. Critic
+
+[1/17] When does Semester II begin at TUK in 2026?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=19.1s
+
+[2/17] What are the dates of the second Continuous Assessment Tests?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=8.3s
+
+[3/17] Is there a revision week before the Semester II exams?
+  ↻ Retry 1/2 — token overlap 0.33 < 0.4 (answer may not be grounded)
+  ↻ Retry 2/2 — token overlap 0.33 < 0.4 (answer may not be grounded)
+  ✓ route=internal_docs chunks=5 grounded=False cite=True t=9.9s
+
+[4/17] When do the end of semester two examinations for 2025/2026 run?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=23.7s
+
+[5/17] Why were the end-of-semester exams moved?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=6.8s
+
+[6/17] What time is the Health Education paper on Monday 18 May 2026?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=2.3s
+
+[7/17] Which room is the Cryptography and Network Security exam in?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=20.8s
+
+[8/17] Can a diploma holder join a TU-K degree programme directly?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=8.8s
+
+[9/17] When do classes start for the February 2026 upgrade intake?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=3.9s
+
+[10/17] Where is the main TU-K campus located?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=3.2s
+
+[11/17] What is the postal address of the university?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=3.7s
+
+[12/17] How much are tuition fees for 2026?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=21.8s
+
+[13/17] How do I register for units on the student portal?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=1.7s
+
+[14/17] What are the attachment logbook requirements?
+  ✗ route=internal_docs chunks=5 grounded=True cite=True t=49.5s
+      failed: refusal_ok
+      preview: The attachment logbook requirements for the Department of Computing and Information Technologies at the Technical Univer
+
+[15/17] What is the student GPS balance top-up number?
+  ✗ route=internal_docs chunks=5 grounded=True cite=True t=29.7s
+      failed: refusal_ok
+      preview: The student GPS balance top-up number can be found on page 3 of the SEMESTER  TWO MAY 2026 EXAMINATION TIMETABLE DEGREE 
+
+[16/17] Hi, are you there?
+  ✓ route=small_talk chunks=0 grounded=True cite=False t=0.0s
+
+[17/17] Who won the Premier League title?
+  ✓ route=off_topic chunks=0 grounded=False cite=False t=0.0s
+
+================================================================================
+SUMMARY
+================================================================================
+Questions:          15/17 passed (88%)
+Route accuracy:     17/17 (100%)
+Retrieval hits:     17/17 (100%)
+Grounded (critic):  15/17 (88%)
+Citation present:   15/17 (88%)
+Avg latency:        12.55s
+Total time:         213.6s
+
+By category:
+  admissions           2/2
+  calendar             3/3
+  conflicting_dates    2/2
+  location             2/2
+  needs_ocr            0/1
+  refusal              2/3
+  router_control       2/2
+  timetable            2/2
+
+Failed questions:
+  ✗ [needs_ocr] What are the attachment logbook requirements?
+      route=internal_docs, chunks=5
+      preview: The attachment logbook requirements for the Department of Computing and Information Technologies at the Technical Univer
+  ✗ [refusal] What is the student GPS balance top-up number?
+      route=internal_docs, chunks=5
+      preview: The student GPS balance top-up number can be found on page 3 of the SEMESTER  TWO MAY 2026 EXAMINATION TIMETABLE DEGREE 

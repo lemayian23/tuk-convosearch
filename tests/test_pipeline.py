@@ -96,6 +96,28 @@ def test_pipeline_retries_when_agent_requests():
     assert ctx.grounded is True
 
 
+def test_streaming_answer_is_not_doubled():
+    """Regression: the pipeline appended tokens the agent had already
+    recorded, so every word reached the student twice."""
+
+    class StreamingGenerator(Agent):
+        name = "Generator"
+
+        def run(self, ctx):
+            raise AssertionError("a streaming agent must not be run()")
+
+        def stream(self, ctx):
+            for token in ("Hel", "lo ", "world"):
+                ctx.answer_tokens.append(token)
+                yield {"type": "token", "content": token}
+
+    ctx = RAGContext(question="q")
+    events = list(Pipeline([StreamingGenerator()]).stream(ctx))
+
+    assert [e["content"] for e in events if e["type"] == "token"] == ["Hel", "lo ", "world"]
+    assert ctx.answer == "Hello world"
+
+
 def test_pipeline_describe():
     a = DummyAgent("A", "k", "v")
     p = Pipeline([a])
