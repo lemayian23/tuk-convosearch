@@ -10,7 +10,8 @@ Location: app/services/pipelines.py
 
 import logging
 import threading
-from typing import Dict, Optional
+from pathlib import Path
+from typing import Dict
 
 from app.config import Settings, get_settings
 from app.rag.configs.cancer_pipeline import build_cancer_pipeline
@@ -21,6 +22,23 @@ logger = logging.getLogger(__name__)
 
 _cache: Dict[str, Pipeline] = {}
 _lock = threading.Lock()
+
+
+class PipelineUnavailableError(RuntimeError):
+    """The requested pipeline cannot run on this server."""
+
+
+def _pubmed_corpus_present(settings: Settings) -> bool:
+    """
+    True only when the local PubMed snapshot is actually installed.
+
+    PubMedStore does not fail on a missing index - it builds an empty one, so
+    an unmounted pubmed_index/ gives a student twenty seconds of thinking and
+    then "nothing found", plus a second copy of the embedding model in RAM.
+    Better to say the corpus is not here.
+    """
+    corpus = Path(settings.pubmed_index_dir)
+    return (corpus / "faiss_index.bin").is_file() and (corpus / "metadata.pkl").is_file()
 
 
 def _build(name: str, settings: Settings) -> Pipeline:
@@ -57,6 +75,14 @@ def _build(name: str, settings: Settings) -> Pipeline:
 def get_pipeline(name: str = "tuk") -> Pipeline:
     settings = get_settings()
     key = name if name in ("tuk", "cancer") else "tuk"
+
+    if key == "cancer" and not _pubmed_corpus_present(settings):
+        raise PipelineUnavailableError(
+            "The cancer research corpus is not installed on this server. "
+            "Sync pubmed_index/ and uncomment its mount in "
+            "deploy/docker-compose.yml to enable it."
+        )
+
     with _lock:
         if key not in _cache:
             logger.info("Building pipeline %r", key)
@@ -65,10 +91,13 @@ def get_pipeline(name: str = "tuk") -> Pipeline:
 
 
 def available_pipelines() -> Dict[str, str]:
-    return {
+    settings = get_settings()
+    pipelines = {
         "tuk": "TU-K student assistant (academic calendar, fees, registration, exams)",
-        "cancer": "Cancer research literature assistant (PubMed abstracts)",
     }
+    if _pubmed_corpus_present(settings):
+        pipelines["cancer"] = "Cancer research literature assistant (PubMed abstracts)"
+    return pipelines
 
 
 def reset_pipelines() -> None:

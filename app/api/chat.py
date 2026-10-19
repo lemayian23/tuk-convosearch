@@ -17,7 +17,7 @@ from app.api.schemas import ChatRequest, ChatResponse, MessageOut, SessionOut
 from app.config import get_settings
 from app.services import database
 from app.services.chat import ChatBusyError, ChatTimeoutError, get_chat_service
-from app.services.pipelines import available_pipelines
+from app.services.pipelines import PipelineUnavailableError, available_pipelines
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
@@ -55,6 +55,8 @@ async def chat(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
     except ChatTimeoutError as exc:
         raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=str(exc))
+    except PipelineUnavailableError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
     if result.error and not result.answer:
         logger.warning("Chat failed for session %s: %s", session_id, result.error)
@@ -95,6 +97,8 @@ async def chat_stream(
             yield _sse({"type": "error", "message": str(exc), "code": 503})
         except ChatTimeoutError as exc:
             yield _sse({"type": "error", "message": str(exc), "code": 504})
+        except PipelineUnavailableError as exc:
+            yield _sse({"type": "error", "message": str(exc), "code": 404})
         except Exception:
             logger.exception("Streaming failed for session %s", session_id)
             yield _sse({"type": "error", "message": FALLBACK_ANSWER, "code": 500})

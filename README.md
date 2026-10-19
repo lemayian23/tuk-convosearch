@@ -4,7 +4,7 @@
 
 The shipped product is the student assistant: a FastAPI service that answers TUK questions over official university documents, with a React student UI, an admin panel, per-IP rate limiting, sessions persisted in SQLite, and streaming answers. Underneath it is still the framework this project started as — a pipeline of small agents and swappable stores — and the second pipeline (a cancer research literature assistant over PubMed) proves the point: same agents, same pipeline class, one config file.
 
-Both pipelines are served by the same UI and the same `POST /api/chat` endpoint, selected with a `pipeline` field (`tuk` | `cancer`).
+Both pipelines are served by the same UI and the same `POST /api/chat` endpoint, selected with a `pipeline` field (`tuk` | `cancer`). The cancer one is opt-in on a deployed box: it needs the local `pubmed_index/` snapshot mounted (see `deploy/docker-compose.yml`), and `GET /api/config` only advertises it when those files are actually present, so students never pick an assistant that has no corpus behind it.
 
 [![Tests](https://github.com/lemayian23/tuk-convosearch/actions/workflows/tests.yml/badge.svg)](https://github.com/lemayian23/tuk-convosearch/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -72,7 +72,7 @@ Answer + Sources
 
 - **Single responsibility** — each agent does one thing
 - **Swappable** — replace any agent or store without touching the pipeline
-- **Testable** — 112 unit tests, all isolated (no LLM calls, no I/O; Ollama is faked)
+- **Testable** — 122 unit tests, all isolated (no LLM calls, no I/O; Ollama is faked)
 - **Measurable** — an eval harness with a fixed question set and per-question scoring
 
 ---
@@ -384,7 +384,7 @@ python -m pytest
 
 Plain pytest, not `make test` — the root `Makefile` only wraps operations on a deployed box.
 
-112 unit tests, and none of them need Ollama: the pipeline, the embedding model and the corpus index are faked (`tests/conftest.py` plus per-test monkeypatching), so the suite runs offline in CI and on a laptop. `pytest.ini` excludes anything marked `integration` by design; `tests/test_integration_pipeline.py` is that mark — a real end-to-end run over your own `data/` and `corpus/`, skipped automatically when Ollama or the model is missing. Run it on a box that has both:
+122 unit tests, and none of them need Ollama: the pipeline, the embedding model and the corpus index are faked (`tests/conftest.py` plus per-test monkeypatching), so the suite runs offline in CI and on a laptop. `pytest.ini` excludes anything marked `integration` by design; `tests/test_integration_pipeline.py` is that mark — a real end-to-end run over your own `data/` and `corpus/`, skipped automatically when Ollama or the model is missing. Run it on a box that has both:
 
 ```bash
 pytest -m integration
@@ -431,7 +431,7 @@ What's done, what's next, what's not planned.
 
 - Modular agent pipeline with retries and short-circuit routing
 - Two domain pipelines (TU-K student assistant, cancer research) behind one endpoint
-- 112 unit tests, all isolated from LLMs and I/O, running in GitHub Actions CI (Python 3.11 and 3.12), plus a marked end-to-end integration test for a box that has Ollama
+- 122 unit tests, all isolated from LLMs and I/O, running in GitHub Actions CI (Python 3.11 and 3.12), plus a marked end-to-end integration test for a box that has Ollama
 - Evaluation harness with real numbers
 - Live PubMed ingestion via NCBI E-utilities
 - Citation enforcement in the synthesizer

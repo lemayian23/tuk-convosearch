@@ -69,7 +69,15 @@ export default function App() {
   useEffect(() => {
     let alive = true
     getConfig()
-      .then((value) => alive && setConfig(value))
+      .then((value) => {
+        if (!alive) return
+        setConfig(value)
+        setPipeline((current) =>
+          !value.pipelines || value.pipelines[current]
+            ? current
+            : value.default_pipeline || 'tuk',
+        )
+      })
       .catch(() => alive && setNotice('The assistant is offline right now.'))
     return () => {
       alive = false
