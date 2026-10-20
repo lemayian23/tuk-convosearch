@@ -37,13 +37,52 @@ def make_chunks(n=5):
 
 def test_retriever_populates_chunks_and_sources():
     store = FakeStore(make_chunks(5))
-    agent = RetrieverAgent(store=store)
+    agent = RetrieverAgent(store=store, max_chunks_per_source=0, min_relevance_margin=0.0)
     ctx = RAGContext(question="cancer question", top_k=5)
     ctx.route = "internal_docs"
     ctx = agent.run(ctx)
     assert len(ctx.retrieved_chunks) == 5
     assert len(ctx.sources) == 3  # max_sources default
     assert ctx.sources[0].source == "doc0.pdf"
+
+
+def test_retriever_prunes_low_scoring_tail():
+    """
+    The prompt is what a student waits on: measured cold on CPU, 924 prompt
+    tokens took 41.5s to prefill and 432 took 20.0s. Scores here drop 0.1 apart,
+    so only the top chunk is close enough to the leader to be worth the wait.
+    """
+    store = FakeStore(make_chunks(5))
+    agent = RetrieverAgent(store=store, min_relevance_margin=0.05)
+    ctx = RAGContext(question="cancer question", top_k=5)
+    ctx.route = "internal_docs"
+    ctx = agent.run(ctx)
+    assert [c["metadata"]["source"] for c in ctx.retrieved_chunks] == ["doc0.pdf"]
+    assert ctx.metadata["context_string"].count("[Source:") == 1
+
+
+def test_retriever_caps_chunks_from_one_source():
+    """Three chunks of the same calendar doc say less than three different docs."""
+    chunks = make_chunks(3)
+    for chunk in chunks:
+        chunk["metadata"]["source"] = "one_doc.pdf"
+        chunk["relevance_score"] = 0.9
+    store = FakeStore(chunks)
+    agent = RetrieverAgent(store=store, max_chunks_per_source=2, min_relevance_margin=0.0)
+    ctx = RAGContext(question="cancer question", top_k=3)
+    ctx.route = "internal_docs"
+    ctx = agent.run(ctx)
+    assert len(ctx.retrieved_chunks) == 2
+
+
+def test_retriever_keeps_a_full_context_when_both_knobs_are_off():
+    """TUK_MIN_RELEVANCE_MARGIN=0 and TUK_MAX_CHUNKS_PER_SOURCE=0 restore k=5."""
+    store = FakeStore(make_chunks(5))
+    agent = RetrieverAgent(store=store, max_chunks_per_source=0, min_relevance_margin=0.0)
+    ctx = RAGContext(question="cancer question", top_k=5)
+    ctx.route = "internal_docs"
+    ctx = agent.run(ctx)
+    assert len(ctx.retrieved_chunks) == 5
 
 
 def test_retriever_uses_retrieval_query_if_set():

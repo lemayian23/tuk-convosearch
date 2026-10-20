@@ -4,7 +4,7 @@
 #
 #   ./deploy/pull-models.sh              pull TUK_OLLAMA_MODEL + reasoning model
 #   ./deploy/pull-models.sh --list       what is already on the box
-#   ./deploy/pull-models.sh --bench      time 1b vs 3b vs 7b on YOUR hardware
+#   ./deploy/pull-models.sh --bench      time 1b vs 3b vs 7b + a real prefill run
 #   ./deploy/pull-models.sh llama3.2:3b  pull one specific tag
 #
 # Why this exists as a script and not just `ollama pull`:
@@ -181,6 +181,119 @@ if [[ "$MODE" == "list" ]]; then
 	exit 0
 fi
 
+# ------------------------------------------------------------------ #
+# Prefill bench: the number the loop below does NOT measure.
+#
+# `ollama run "question"` sends ~20 tokens. A real answer is generated after
+# the retrieved context, and on CPU that context is evaluated token by token
+# before the first word appears. Measured cold on a laptop, llama3.2:1b, model
+# unloaded between trials and a random prefix so Ollama's KV reuse cannot help:
+# 924 prompt tokens = 41.5s of prefill, 432 = 20.0s. That is the wait a student
+# sees before anything appears, and TUK_LLM_TIMEOUT_SECONDS has to cover it plus
+# the whole generated answer.
+#
+# Runs in the app image so the prompt is built by the same pipeline the server
+# uses, with the same num_ctx/num_predict/keep_alive it will send.
+# ------------------------------------------------------------------ #
+prefill_bench() {
+	say "Prefill: what one grounded answer actually costs this box"
+	warn "If the app image is not built yet this is skipped - run ./deploy/deploy.sh first."
+	# The Python below prints its own aligned report; bash only relays it, so the
+	# numbers cannot drift out of step with the labels.
+	compose run --rm -T app python - <<'PY' || warn "Could not run the bench in the app container (image missing or ollama unreachable)"
+import json, math, random, urllib.request
+
+from app.config import get_settings
+from app.rag import RAGContext
+from app.rag.configs.tuk_pipeline import TUK_SYSTEM_PROMPT
+
+QUESTION = "When do the second semester exams start?"
+s = get_settings()
+
+context, origin = "", "retrieved from the indexed corpus"
+try:
+    from app.services.pipelines import get_pipeline
+
+    pipeline = get_pipeline("tuk")
+    ctx = RAGContext(question=QUESTION, session_id="bench", top_k=s.top_k)
+    for agent in pipeline.agents[:2]:
+        agent.run(ctx)
+    context = ctx.metadata.get("context_string") or ""
+    origin = "retrieved context: %d chunks kept of %d retrieved" % (
+        len(ctx.retrieved_chunks), ctx.top_k)
+except Exception as exc:
+    origin = "no retrieved context (%s)" % type(exc).__name__
+
+if not context.strip():
+    origin += " - nothing indexed, using a synthetic ~430-token prompt (run: make reindex)"
+    filler = (
+        "2026 Academic Year Calendar: Semester II examinations begin in May, "
+        "Continuous Assessment Tests run in March, and industrial attachment "
+        "covers twelve weeks after the final exam week. "
+    )
+    while len(context) < 1700:
+        context += filler
+
+# Random prefix: Ollama reuses the KV cache for any prompt that starts the same
+# way, and a bench that runs twice would otherwise report the cache, not the box.
+prompt = TUK_SYSTEM_PROMPT.format(
+    context="Bench run %04x. " % random.randrange(1 << 16) + context,
+    history="No previous conversation.",
+    question=QUESTION)
+body = {
+    "model": s.ollama_model,
+    "prompt": prompt,
+    "stream": False,
+    "keep_alive": s.llm_keep_alive,
+    "options": {
+        "num_predict": s.synthesis_num_predict,
+        "temperature": s.synthesis_temperature,
+        "num_ctx": s.synthesis_num_ctx,
+        "repeat_penalty": s.synthesis_repeat_penalty,
+    },
+}
+with urllib.request.urlopen(
+    urllib.request.Request(
+        s.ollama_host.rstrip("/") + "/api/generate",
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json"},
+    ),
+    timeout=900,
+) as response:
+    r = json.load(response)
+
+prefill = r.get("prompt_eval_duration", 0) / 1e9
+gen_time = r.get("eval_duration", 0) / 1e9
+gen_tokens = r.get("eval_count", 0) or 1
+prefill_tps = (r.get("prompt_eval_count", 0) / prefill) if prefill else 0.0
+gen_tps = (gen_tokens / gen_time) if gen_time else 0.0
+# A full-length answer writes num_predict tokens; the measured one may be shorter.
+worst = prefill + (s.synthesis_num_predict / gen_tps if gen_tps else 0.0)
+suggested = max(60, int(math.ceil(worst * 2 / 15.0)) * 15)
+
+print('    model          %s  (weights loaded in %.1f s here; the app does that at boot)'
+      % (s.ollama_model, r.get("load_duration", 0) / 1e9))
+print('    prompt tokens  %s (context: %s)' % (r.get("prompt_eval_count"), origin))
+print('    prefill        %.1f s  (%.1f tok/s)  <- nothing on screen yet' % (prefill, prefill_tps))
+print('    generation     %.1f s  (%.1f tok/s)  %d tokens written' % (gen_time, gen_tps, gen_tokens))
+print('    this answer    %.1f s wall' % (prefill + gen_time))
+print('    longest answer %.0f s  (a full %d-token reply at %.1f tok/s)'
+      % (worst, s.synthesis_num_predict, gen_tps))
+print()
+if worst > s.llm_timeout_seconds:
+    print('    !! TUK_LLM_TIMEOUT_SECONDS=%g is BELOW that. A long answer gets cut'
+          % s.llm_timeout_seconds)
+    print('       off mid-sentence with a 504. Raise it to %d, or shrink the prompt'
+          % suggested)
+    print('       with TUK_MAX_CHUNKS_PER_SOURCE / TUK_MIN_RELEVANCE_MARGIN.')
+else:
+    print('    TUK_LLM_TIMEOUT_SECONDS=%g covers the longest answer with %.1fx to spare.'
+          % (s.llm_timeout_seconds, s.llm_timeout_seconds / worst if worst else 0.0))
+    print('    If this box is slower than your VPS, re-run this bench there rather')
+    print('    than guessing: prefill is what moves, and it is all prompt length.')
+PY
+}
+
 if [[ "$MODE" == "bench" ]]; then
 	require_ollama
 	say "Hardware"
@@ -191,8 +304,11 @@ if [[ "$MODE" == "bench" ]]; then
 	decision_table
 	echo
 	say "Benchmark: the same real question through each model"
-	warn "Each line is one cold-ish generation. Total wall time scales with the"
-	warn "number of models you pull AND keep resident; Ollama evicts to disk."
+	warn "Each line is one cold-ish generation of a BARE question - no retrieved"
+	warn "context, so these understate real answer time by the whole prefill. The"
+	warn "prefill bench after them is the number students actually wait for."
+	warn "Total wall time scales with the number of models you pull AND keep"
+	warn "resident; Ollama evicts to disk."
 	printf '\n    Question: "When do the second semester exams start?"\n\n'
 
 	for m in llama3.2:1b llama3.2:3b qwen2.5:7b-instruct; do
@@ -211,6 +327,8 @@ if [[ "$MODE" == "bench" ]]; then
 		fi
 	done
 
+	echo
+	prefill_bench
 	echo
 	warn "Set your winner in .env (TUK_OLLAMA_MODEL=...) and re-run this script"
 	warn "with no arguments, then ./deploy/deploy.sh --status to confirm"

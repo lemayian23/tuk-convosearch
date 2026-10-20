@@ -44,6 +44,13 @@ logs/
 # admin upload, and must never be committed.
 corpus/
 
+# Built indexes are derived data, not source - and this one is worse:
+# app/rag/stores/pubmed_store.py restores it with pickle.load(), which executes
+# whatever the file contains. Keeping it out of the repo means a clone cannot
+# hand the server a metadata.pkl to run. Rebuild it locally instead (see the
+# README) and rsync it to the VPS if you want the cancer pipeline there.
+pubmed_index/
+
 # Temporary files
 *.tmp
 temp/

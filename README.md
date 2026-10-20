@@ -4,7 +4,7 @@
 
 The shipped product is the student assistant: a FastAPI service that answers TUK questions over official university documents, with a React student UI, an admin panel, per-IP rate limiting, sessions persisted in SQLite, and streaming answers. Underneath it is still the framework this project started as — a pipeline of small agents and swappable stores — and the second pipeline (a cancer research literature assistant over PubMed) proves the point: same agents, same pipeline class, one config file.
 
-Both pipelines are served by the same UI and the same `POST /api/chat` endpoint, selected with a `pipeline` field (`tuk` | `cancer`). The cancer one is opt-in on a deployed box: it needs the local `pubmed_index/` snapshot mounted (see `deploy/docker-compose.yml`), and `GET /api/config` only advertises it when those files are actually present, so students never pick an assistant that has no corpus behind it.
+Both pipelines are served by the same UI and the same `POST /api/chat` endpoint, selected with a `pipeline` field (`tuk` | `cancer`). The cancer one is opt-in on a deployed box: it needs a local `pubmed_index/` snapshot mounted (see `deploy/docker-compose.yml`), and `GET /api/config` only advertises it when those files are actually present, so students never pick an assistant that has no corpus behind it. That snapshot is **not in the repo** — `pubmed_index/` is gitignored, because it used to be restored with `pickle.load()` and loading a corpus file is not something that should be able to run code. It is now plain JSON (`metadata.json` beside the FAISS `.bin`), built locally or synced over `rsync` when you want the pipeline.
 
 [![Tests](https://github.com/lemayian23/tuk-convosearch/actions/workflows/tests.yml/badge.svg)](https://github.com/lemayian23/tuk-convosearch/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -72,7 +72,7 @@ Answer + Sources
 
 - **Single responsibility** — each agent does one thing
 - **Swappable** — replace any agent or store without touching the pipeline
-- **Testable** — 124 unit tests, all isolated (no LLM calls, no I/O; Ollama is faked)
+- **Testable** — 130 unit tests, all isolated (no LLM calls, no I/O; Ollama is faked)
 - **Measurable** — an eval harness with a fixed question set and per-question scoring
 
 ---
@@ -149,6 +149,14 @@ uvicorn app.main:app --reload --port 8000
 For front-end work, `npm --prefix web run dev` starts Vite on 5173 and proxies `/api` to `127.0.0.1:8000`; that origin is the default in `TUK_CORS_ORIGINS`, so nothing else needs configuring.
 
 #### Try the cancer pipeline
+
+The pipeline reads `pubmed_index/`, which a fresh clone does not have. Build a
+small snapshot first — NCBI asks for ≤3 requests/sec without an API key:
+
+```bash
+python -c "from app.rag.stores.pubmed_store import PubMedStore; \
+PubMedStore().fetch_and_index('HER2 positive breast cancer', max_results=40)"
+```
 
 ```python
 from app.rag.configs.cancer_pipeline import build_cancer_pipeline
@@ -275,7 +283,7 @@ tuk-convosearch/
 │
 ├── corpus/tuk/                             # the TU-K source documents that get indexed
 ├── data/                                   # the SQLite database (single file, the whole store)
-├── pubmed_index/                           # cancer corpus snapshot (FAISS + metadata)
+├── pubmed_index/                           # cancer corpus snapshot (gitignored; FAISS + metadata.json)
 │
 ├── scripts/
 │   ├── create_admin.py                     # make the first admin account
@@ -386,7 +394,7 @@ python -m pytest
 
 Plain pytest, not `make test` — the root `Makefile` only wraps operations on a deployed box.
 
-124 unit tests, and none of them need Ollama: the pipeline, the embedding model and the corpus index are faked (`tests/conftest.py` plus per-test monkeypatching), so the suite runs offline in CI and on a laptop. `pytest.ini` excludes anything marked `integration` by design; `tests/test_integration_pipeline.py` is that mark — a real end-to-end run over your own `data/` and `corpus/`, skipped automatically when Ollama or the model is missing. Run it on a box that has both:
+130 unit tests, and none of them need Ollama: the pipeline, the embedding model and the corpus index are faked (`tests/conftest.py` plus per-test monkeypatching), so the suite runs offline in CI and on a laptop. `pytest.ini` excludes anything marked `integration` by design; `tests/test_integration_pipeline.py` is that mark — a real end-to-end run over your own `data/` and `corpus/`, skipped automatically when Ollama or the model is missing. Run it on a box that has both:
 
 ```bash
 pytest -m integration
@@ -417,9 +425,30 @@ Current TU-K numbers, llama3.2:1b with the heuristic critic and 25 indexed chunk
 | Route accuracy | 17/17 (100%) |
 | Retrieval hit | 17/17 (100%) |
 | Citation present | 15/17 (88%) |
-| Average latency | 12.6 s |
 
 The two red lines are known and named: one scanned PDF that extracts to zero characters until someone OCRs it (`needs_ocr`), and one question whose answer does not exist in the corpus, where a 1-billion-parameter model invents a page reference instead of refusing. That is the strongest argument for `critic_mode=llm` or a larger model on the VPS.
+
+**Do not read the average latency as a student's wait.** The baseline in
+`evals/baseline_tuk_1b.txt` reports 12.6 s per question because Ollama reuses the
+KV cache for a prompt it has just seen, and the eval asks the same questions in
+the same order every run. Re-running the identical set cold takes 26.1 s
+(`evals/baseline_tuk_1b_pruned.txt`) and still passes 15/17 — grounding checks go
+15/17 to 14/17 with the shorter prompt, which is one answer, inside the noise of
+a sampled model. Measured cold — model unloaded between trials, random prefix so
+the cache cannot help — one question costs this:
+
+| prompt | prefill (nothing on screen) | generation | whole answer |
+|---|---|---|---|
+| 924 tokens (5 chunks) | 41.5 s | 6 s | ~48 s |
+| 432 tokens (pruned to 2) | 20.0 s | 5 s | ~25 s |
+
+Prefill runs at about 22 tokens/s on CPU and is proportional to the number of
+retrieved characters you put in the prompt, which makes prompt length the one
+latency lever that costs nothing to pull. `TUK_MAX_CHUNKS_PER_SOURCE=2` and
+`TUK_MIN_RELEVANCE_MARGIN=0.05` (see
+[`deploy/.env.example`](deploy/.env.example)) apply it after ranking, so `top_k`
+stays 5 and recall is untouched: the eval scores 15/17 with the pruning on and
+off. `./deploy/pull-models.sh --bench` prints both numbers for your hardware.
 
 Numbers are committed to evals/ after each significant change, so you can diff improvements.
 
@@ -433,7 +462,7 @@ What's done, what's next, what's not planned.
 
 - Modular agent pipeline with retries and short-circuit routing
 - Two domain pipelines (TU-K student assistant, cancer research) behind one endpoint
-- 124 unit tests, all isolated from LLMs and I/O, running in GitHub Actions CI (Python 3.11 and 3.12), plus a marked end-to-end integration test for a box that has Ollama
+- 130 unit tests, all isolated from LLMs and I/O, running in GitHub Actions CI (Python 3.11 and 3.12), plus a marked end-to-end integration test for a box that has Ollama
 - Evaluation harness with real numbers
 - Live PubMed ingestion via NCBI E-utilities
 - Citation enforcement in the synthesizer

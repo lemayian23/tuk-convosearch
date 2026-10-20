@@ -18,6 +18,24 @@ SKIP_ROUTES = {"off_topic", "small_talk"}
 
 
 class RetrieverAgent(RetrievalAgent):
+    """
+    Args:
+        store:                anything with .search(query, k)
+        max_context_chars:    per-chunk trim applied when building the prompt
+        max_quote_chars:      per-source trim applied to what the student sees
+        max_sources:          how many sources to show
+        max_chunks_per_source: 0 = no limit. A 5-chunk prompt from a 3-document
+                              corpus is usually the same document three times,
+                              and every extra copy is prefill the student waits for.
+        min_relevance_margin: drop chunks scoring this far below the best one.
+                              0 = keep everything.
+
+    The two trimming knobs exist because prompt length IS latency on a CPU
+    model: measured cold, 924 prompt tokens took 41.5 s to prefill and 432 took
+    20.0 s, at about 22 tokens/s. They are applied before the sources are built,
+    so a citation the student can see is always a chunk the model actually read.
+    """
+
     def __init__(
         self,
         store: BaseVectorStore,
@@ -25,12 +43,16 @@ class RetrieverAgent(RetrievalAgent):
         max_context_chars: int = 600,
         max_quote_chars: int = 250,
         max_sources: int = 3,
+        max_chunks_per_source: int = 2,
+        min_relevance_margin: float = 0.05,
     ):
         self.store = store
         self.name = name
         self.max_context_chars = max_context_chars
         self.max_quote_chars = max_quote_chars
         self.max_sources = max_sources
+        self.max_chunks_per_source = max_chunks_per_source
+        self.min_relevance_margin = min_relevance_margin
 
     def run(self, context: RAGContext) -> RAGContext:
         if context.route in SKIP_ROUTES:
@@ -40,7 +62,7 @@ class RetrieverAgent(RetrievalAgent):
         context.retrieval_query = query
 
         try:
-            chunks = self.store.search(query, k=context.top_k)
+            chunks = self._select(self.store.search(query, k=context.top_k))
         except Exception as e:
             context.error = f"Retrieval failed: {e}"
             return context
@@ -50,6 +72,29 @@ class RetrieverAgent(RetrievalAgent):
         context.metadata["context_string"] = self.build_context_string(chunks)
 
         return context
+
+    def _select(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Rank-ordered pruning. The first chunk always survives - it defines the
+        margin it is measured against - so the result is empty only if the
+        store returned nothing.
+        """
+        if not chunks:
+            return []
+        best = float(chunks[0].get("relevance_score", 0.0))
+        per_source: Dict[str, int] = {}
+        kept = []
+        for chunk in chunks:
+            score = float(chunk.get("relevance_score", 0.0))
+            if self.min_relevance_margin and score < best - self.min_relevance_margin:
+                continue
+            source = str(chunk.get("metadata", {}).get("source", "unknown"))
+            seen = per_source.get(source, 0)
+            if self.max_chunks_per_source and seen >= self.max_chunks_per_source:
+                continue
+            per_source[source] = seen + 1
+            kept.append(chunk)
+        return kept
 
     def stream(self, context: RAGContext):
         """

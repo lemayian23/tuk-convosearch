@@ -98,6 +98,8 @@ def build_tuk_pipeline(
     critic_model: str = None,
     critic_overlap_threshold: float = 0.4,
     max_sources: int = 3,
+    max_chunks_per_source: int = 2,
+    min_relevance_margin: float = 0.05,
     num_predict: int = 300,
     temperature: float = 0.2,
     num_ctx: int = 2048,
@@ -142,6 +144,8 @@ def build_tuk_pipeline(
             store=store,
             name="Retriever",
             max_sources=max_sources,
+            max_chunks_per_source=max_chunks_per_source,
+            min_relevance_margin=min_relevance_margin,
         ),
         SynthesizerAgent(
             model_name=model_name,

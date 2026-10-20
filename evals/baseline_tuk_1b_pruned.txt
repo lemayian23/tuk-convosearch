@@ -1,0 +1,97 @@
+================================================================================
+Running tuk evaluation: 17 questions
+  critic_mode=heuristic, enable_expansion=True
+================================================================================
+✓ Pipeline initialized with 4 agents:
+    0. Router
+    1. Retriever
+    2. Synthesizer [retry-from]
+    3. Critic
+
+[1/17] When does Semester II begin at TUK in 2026?
+  ✓ route=internal_docs chunks=3 grounded=True cite=True t=36.4s
+
+[2/17] What are the dates of the second Continuous Assessment Tests?
+  ✓ route=internal_docs chunks=2 grounded=True cite=True t=17.0s
+
+[3/17] Is there a revision week before the Semester II exams?
+  ↻ Retry 1/2 — token overlap 0.33 < 0.4 (answer may not be grounded)
+  ↻ Retry 2/2 — token overlap 0.33 < 0.4 (answer may not be grounded)
+  ✓ route=internal_docs chunks=3 grounded=False cite=True t=19.9s
+
+[4/17] When do the end of semester two examinations for 2025/2026 run?
+  ✓ route=internal_docs chunks=4 grounded=True cite=True t=39.7s
+
+[5/17] Why were the end-of-semester exams moved?
+  ✓ route=internal_docs chunks=3 grounded=True cite=True t=51.5s
+
+[6/17] What time is the Health Education paper on Monday 18 May 2026?
+  ✓ route=internal_docs chunks=5 grounded=True cite=True t=36.6s
+
+[7/17] Which room is the Cryptography and Network Security exam in?
+  ✓ route=internal_docs chunks=3 grounded=True cite=True t=30.3s
+
+[8/17] Can a diploma holder join a TU-K degree programme directly?
+  ✓ route=internal_docs chunks=1 grounded=True cite=True t=25.8s
+
+[9/17] When do classes start for the February 2026 upgrade intake?
+  ✓ route=internal_docs chunks=3 grounded=True cite=True t=16.2s
+
+[10/17] Where is the main TU-K campus located?
+  ✓ route=internal_docs chunks=1 grounded=True cite=True t=11.0s
+
+[11/17] What is the postal address of the university?
+  ✓ route=internal_docs chunks=2 grounded=True cite=True t=15.8s
+
+[12/17] How much are tuition fees for 2026?
+  ✓ route=internal_docs chunks=4 grounded=True cite=True t=25.5s
+
+[13/17] How do I register for units on the student portal?
+  ✓ route=internal_docs chunks=4 grounded=True cite=True t=26.3s
+
+[14/17] What are the attachment logbook requirements?
+  ↻ Retry 1/2 — token overlap 0.37 < 0.4 (answer may not be grounded)
+  ↻ Retry 2/2 — token overlap 0.39 < 0.4 (answer may not be grounded)
+  ✗ route=internal_docs chunks=2 grounded=False cite=True t=68.7s
+      failed: refusal_ok
+      preview: The attachment logbook requirements for ECII 3203 ECSI 3203 ECCI 3203 are as follows:  * The student is required to main
+
+[15/17] What is the student GPS balance top-up number?
+  ✗ route=internal_docs chunks=3 grounded=True cite=True t=23.5s
+      failed: refusal_ok
+      preview: The student GPS balance top-up number can be found on Page 3 of the SEMESTER 2 MAY 2026 EXAMINATION TIMETABLE DEGREE -BT
+
+[16/17] Hi, are you there?
+  ✓ route=small_talk chunks=0 grounded=True cite=False t=0.0s
+
+[17/17] Who won the Premier League title?
+  ✓ route=off_topic chunks=0 grounded=False cite=False t=0.0s
+
+================================================================================
+SUMMARY
+================================================================================
+Questions:          15/17 passed (88%)
+Route accuracy:     17/17 (100%)
+Retrieval hits:     17/17 (100%)
+Grounded (critic):  14/17 (82%)
+Citation present:   15/17 (88%)
+Avg latency:        26.14s
+Total time:         444.6s
+
+By category:
+  admissions           2/2
+  calendar             3/3
+  conflicting_dates    2/2
+  location             2/2
+  needs_ocr            0/1
+  refusal              2/3
+  router_control       2/2
+  timetable            2/2
+
+Failed questions:
+  ✗ [needs_ocr] What are the attachment logbook requirements?
+      route=internal_docs, chunks=2
+      preview: The attachment logbook requirements for ECII 3203 ECSI 3203 ECCI 3203 are as follows:  * The student is required to main
+  ✗ [refusal] What is the student GPS balance top-up number?
+      route=internal_docs, chunks=3
+      preview: The student GPS balance top-up number can be found on Page 3 of the SEMESTER 2 MAY 2026 EXAMINATION TIMETABLE DEGREE -BT

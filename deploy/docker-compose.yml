@@ -164,8 +164,10 @@ services:
 
       # Uncomment only if students will use the "cancer" literature pipeline:
       # it queries the local FAISS snapshot plus NCBI E-utilities (needs outbound
-      # HTTPS). pubmed_index/ is excluded by .dockerignore, so it must be synced
-      # and mounted explicitly.
+      # HTTPS). pubmed_index/ is neither in the repo (it used to be pickle.load'ed)
+      # nor in the image (.dockerignore), so `git clone` will not give it to you -
+      # build it with PubMedStore.fetch_and_index() (see the README) or rsync a
+      # snapshot over, then mount it explicitly.
       # - ./pubmed_index:/srv/app/pubmed_index:ro
 
     depends_on:

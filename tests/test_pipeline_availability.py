@@ -29,7 +29,7 @@ def pubmed_corpus(tmp_path, monkeypatch, settings):
     root.mkdir()
     monkeypatch.setattr(settings, "pubmed_index_dir", root)
     (root / "faiss_index.bin").write_bytes(b"")
-    (root / "metadata.pkl").write_bytes(b"")
+    (root / "metadata.json").write_text("[]", encoding="utf-8")
     return root
 
 
@@ -39,10 +39,25 @@ def test_missing_corpus_is_detected(settings, monkeypatch, tmp_path):
 
 
 def test_partial_corpus_still_counts_as_missing(settings, monkeypatch, tmp_path):
-    """The .bin without the .pkl would make PubMedStore rebuild from scratch."""
+    """The .bin without its metadata would make PubMedStore rebuild from scratch."""
     root = tmp_path / "half"
     root.mkdir()
     (root / "faiss_index.bin").write_bytes(b"")
+    monkeypatch.setattr(settings, "pubmed_index_dir", root)
+    assert _pubmed_corpus_present(settings) is False
+
+
+def test_a_pickle_snapshot_is_not_recognised(settings, monkeypatch, tmp_path):
+    """
+    pubmed_index/ used to be committed and restored with pickle.load, which runs
+    whatever the file holds. It now comes off rsync instead of git, which is the
+    same untrusted bytes, so the store reads JSON only - an old snapshot simply
+    looks absent rather than executing.
+    """
+    root = tmp_path / "old_format"
+    root.mkdir()
+    (root / "faiss_index.bin").write_bytes(b"")
+    (root / "metadata.pkl").write_bytes(b"\x80\x04\x95")
     monkeypatch.setattr(settings, "pubmed_index_dir", root)
     assert _pubmed_corpus_present(settings) is False
 
@@ -140,3 +155,50 @@ def test_config_endpoint_and_schema_stay_in_sync(client):
     advertised = set(client.get("/api/config").json()["pipelines"])
     assert ChatRequest.model_fields["pipeline"].default == "tuk"
     assert "tuk" in advertised
+
+
+def test_snapshot_round_trips_as_json(tmp_path, monkeypatch):
+    """
+    The embedder is replaced because S-PubMedBert-MS-MARCO is ~400 MB and needs
+    the network; the store's own read/write path is exercised for real.
+    """
+    import faiss
+    import numpy as np
+
+    from app.rag.stores import pubmed_store as module
+
+    class StubEmbedder:
+        def encode(self, texts, show_progress_bar=False):
+            rows = 1 if isinstance(texts, str) else len(texts)
+            return np.zeros((rows, 8), dtype="float32")
+
+    monkeypatch.setattr(module, "SentenceTransformer", lambda *a, **k: StubEmbedder())
+
+    root = tmp_path / "pubmed_index"
+    root.mkdir()
+    faiss.write_index(faiss.IndexFlatL2(8), str(root / "faiss_index.bin"))
+    (root / "metadata.json").write_text("[]", encoding="utf-8")
+
+    store = module.PubMedStore(persist_directory=str(root), dimension=8)
+    store.add_chunks([{"text": "PD-L1 inhibitors", "metadata": {"pmid": "12345"}}])
+
+    on_disk = json.loads((root / "metadata.json").read_text(encoding="utf-8"))
+    assert on_disk[0]["metadata"]["pmid"] == "12345"
+    assert not (root / "metadata.pkl").exists()
+
+    reopened = module.PubMedStore(persist_directory=str(root), dimension=8)
+    assert reopened.metadata == on_disk
+
+
+def test_pubmed_store_never_deserialises_a_pickle():
+    """
+    The point of the JSON switch: a metadata.pkl sitting in the mounted
+    directory is now an unrecognised file instead of code the server runs.
+    """
+    from pathlib import Path
+
+    from app.rag.stores import pubmed_store as module
+
+    source = Path(module.__file__).read_text(encoding="utf-8")
+    assert "import pickle" not in source
+    assert "pickle.load" not in source

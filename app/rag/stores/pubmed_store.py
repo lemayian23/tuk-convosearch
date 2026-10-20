@@ -4,12 +4,15 @@ and stores in a local FAISS index.
 
 Extends BaseVectorStore so it drops into any pipeline unchanged.
 
+Metadata persists as JSON rather than pickle: this snapshot is synced onto the
+server by hand, so restoring it must not be able to execute the file's contents.
+
 Location: app/rag/stores/pubmed_store.py
 """
 
+import json
 import os
 import time
-import pickle
 import xml.etree.ElementTree as ET
 from typing import List, Dict, Any, Optional
 
@@ -48,7 +51,7 @@ class PubMedStore(BaseVectorStore):
         """
         self.persist_directory = persist_directory
         self.index_file = os.path.join(persist_directory, "faiss_index.bin")
-        self.metadata_file = os.path.join(persist_directory, "metadata.pkl")
+        self.metadata_file = os.path.join(persist_directory, "metadata.json")
         self.dimension = dimension
         self.email = email
         self.api_key = api_key
@@ -62,8 +65,8 @@ class PubMedStore(BaseVectorStore):
         if os.path.exists(self.index_file) and os.path.exists(self.metadata_file):
             print(f"  [PubMedStore] Loading existing index from {self.index_file}")
             self.index = faiss.read_index(self.index_file)
-            with open(self.metadata_file, "rb") as f:
-                self.metadata = pickle.load(f)
+            with open(self.metadata_file, "r", encoding="utf-8") as f:
+                self.metadata = json.load(f)
             print(f"  [PubMedStore] Loaded {len(self.metadata)} chunks")
         else:
             print("  [PubMedStore] Creating new index (IndexFlatL2)")
@@ -348,5 +351,5 @@ class PubMedStore(BaseVectorStore):
 
     def _save(self) -> None:
         faiss.write_index(self.index, self.index_file)
-        with open(self.metadata_file, "wb") as f:
-            pickle.dump(self.metadata, f)
+        with open(self.metadata_file, "w", encoding="utf-8") as f:
+            json.dump(self.metadata, f, ensure_ascii=False)

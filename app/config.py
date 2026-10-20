@@ -81,6 +81,13 @@ class Settings(BaseSettings):
     chunk_overlap: int = 160
     top_k: int = 5
     max_sources: int = 3
+    # Prompt length is latency: llama3.2:1b on CPU prefilled at ~22 tokens/s, so
+    # the 924-token prompt this corpus produced took 41.5s before the first word
+    # appeared and the 432-token one takes 20.0s (both measured cold, with the
+    # model unloaded and a random prefix to defeat KV reuse). top_k stays 5 so
+    # recall is not what pays for the speed; these prune the prompt after ranking.
+    max_chunks_per_source: int = 2
+    min_relevance_margin: float = 0.05
     history_turns: int = 4
     critic_mode: Literal["heuristic", "llm"] = "heuristic"
     critic_overlap_threshold: float = 0.4

@@ -38,7 +38,7 @@ def _pubmed_corpus_present(settings: Settings) -> bool:
     Better to say the corpus is not here.
     """
     corpus = Path(settings.pubmed_index_dir)
-    return (corpus / "faiss_index.bin").is_file() and (corpus / "metadata.pkl").is_file()
+    return (corpus / "faiss_index.bin").is_file() and (corpus / "metadata.json").is_file()
 
 
 def _build(name: str, settings: Settings) -> Pipeline:
@@ -52,6 +52,8 @@ def _build(name: str, settings: Settings) -> Pipeline:
             critic_model=settings.ollama_reasoning_model,
             critic_overlap_threshold=settings.critic_overlap_threshold,
             max_sources=settings.max_sources,
+            max_chunks_per_source=settings.max_chunks_per_source,
+            min_relevance_margin=settings.min_relevance_margin,
             num_predict=settings.synthesis_num_predict,
             num_ctx=settings.synthesis_num_ctx,
             temperature=settings.synthesis_temperature,

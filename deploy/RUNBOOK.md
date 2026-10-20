@@ -315,10 +315,33 @@ trusting anyone's blog:
 ```
 
 This prints the decision table (1b vs 3b vs 7b: disk, RAM while serving,
-tokens/sec on CPU, expected answer latency) and then times the same real question
-through each installed model. Pick the winner, set `TUK_OLLAMA_MODEL` in `.env`,
-re-run `./deploy/pull-models.sh`, then `./deploy/deploy.sh`. On an 8 GB VPS the
-sweet spot is usually `llama3.2:3b` with `TUK_MAX_CONCURRENT_LLM_CALLS=2`.
+tokens/sec on CPU), times the same question through each installed model, and
+then runs the **prefill bench**, which is the number that decides how long a
+student stares at a spinner. The two are not the same test: `ollama run
+"question"` sends ~20 tokens, while a real answer is generated after the
+retrieved documents, and every one of those tokens is evaluated before the
+first word appears.
+
+Reference measurement, llama3.2:1b on CPU, model unloaded between trials and a
+random prefix so Ollama's KV cache reuse cannot flatter the result:
+
+```
+    prompt tokens  924     prefill 41.5 s   (22 tok/s)   <- nothing on screen
+    prompt tokens  432     prefill 20.0 s   (22 tok/s)
+```
+
+Prompt length is therefore the only latency lever you control without buying
+hardware, which is what `TUK_MAX_CHUNKS_PER_SOURCE` and
+`TUK_MIN_RELEVANCE_MARGIN` (`.env`) are for; the shipped defaults halve the
+prompt and the eval set still passes 15/17. Repeat the measurement on
+the VPS rather than reusing these numbers: prefill scales with the model, the
+corpus, and the core count you were actually given.
+
+Pick the winner, set `TUK_OLLAMA_MODEL` in `.env`, re-run
+`./deploy/pull-models.sh`, then `./deploy/deploy.sh`. On an 8 GB VPS the sweet
+spot is usually `llama3.2:3b` with `TUK_MAX_CONCURRENT_LLM_CALLS=2` — but 3b
+prefills the same prompt roughly three times slower than 1b, so check the
+prefill line before you commit to it.
 
 ---
 
@@ -579,6 +602,48 @@ curl -sS -X POST "https://ask.lemayian.com/api/admin/documents" \
 
 The field name is exactly `file`. The endpoint returns `201` with
 `{status, filename, document_id, chunks}`.
+
+### Turn the latency knobs the other way
+
+If answers start missing a date or a fee that you can see in the document, the
+retriever is pruning too aggressively for your corpus — the defaults trade a
+924-token prompt for a 432-token one, which is ~21 s of prefill on CPU:
+
+```bash
+# in .env: 0 and 0.0 send the whole top_k to the model again
+TUK_MAX_CHUNKS_PER_SOURCE=0
+TUK_MIN_RELEVANCE_MARGIN=0
+dc restart app
+```
+
+Then re-measure instead of guessing: `./deploy/pull-models.sh --bench` prints the
+prompt size and the prefill seconds for one real TU-K answer on this box.
+
+### Turn on the cancer pipeline
+
+`GET /api/config` advertises `cancer` only when the PubMed snapshot is actually
+on the disk, so this is a real opt-in, not a flag. `pubmed_index/` is deliberately
+not in git (it used to be, and it used to be restored with `pickle.load`), so you
+either build it or copy it:
+
+```bash
+# [laptop] build a snapshot here (NCBI allows ~3 requests/sec without a key)
+python -c "from app.rag.stores.pubmed_store import PubMedStore; \
+PubMedStore().fetch_and_index('HER2 positive breast cancer', max_results=100)"
+# [laptop] then push it
+rsync -avz pubmed_index/ deploy@$VPS_IP:/opt/tuk-convosearch/pubmed_index/
+```
+
+Uncomment the `./pubmed_index` mount in `deploy/docker-compose.yml`,
+`dc restart app` (the alias from the top of this section), and check it landed:
+
+```bash
+curl -sS https://ask.lemayian.com/api/config | python3 -c 'import json,sys; print(list(json.load(sys.stdin)["pipelines"]))'
+```
+
+Expected: `['tuk', 'cancer']`. Ask it something with no corpus behind it and you
+get a `404` saying the corpus is not installed — that is the guard working, not a
+broken pipeline.
 
 ### Back up, and take it off the server
 
